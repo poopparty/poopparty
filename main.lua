@@ -1,25 +1,11 @@
 repeat task.wait() until game:IsLoaded()
 if shared.vape then shared.vape:Uninject() end
 
-local debug = debug
 if identifyexecutor then
-    local executorName = ({identifyexecutor()})[1]
-    
-    if table.find({'Argon', 'Wave', 'Xeno', 'Solara'}, executorName) then
-        if table.find({'Xeno', 'Solara'}, executorName) then
-            debug = table.clone(debug)
-            debug.getupvalue = nil
-            debug.getconstant = nil
-            debug.setstack = nil
-            getgenv().debug = debug
-        end
-        getgenv().setthreadidentity = nil
-    end
+	if table.find({'Argon', 'Wave'}, ({identifyexecutor()})[1]) then
+		getgenv().setthreadidentity = nil
+	end
 end
-
-local canDebug = debug.getupvalue ~= nil
-local inputService = cloneref(game:GetService('UserInputService'))
-local touchEnabled = inputService.TouchEnabled
 
 local function validateSecurity()
     local HttpService = game:GetService("HttpService")
@@ -142,62 +128,38 @@ shared.ValidatedUsername = validatedUsername
 
 local vape
 local loadstring = function(...)
-    local res, err = loadstring(...)
-    if err and vape then
-        vape:CreateNotification('Vape', 'Failed to load : '..err, 30, 'alert')
-    end
-    return res
+	local res, err = loadstring(...)
+	if err and vape then
+		vape:CreateNotification('Vape', 'Failed to load : '..err, 30, 'alert')
+	end
+	return res
 end
 local queue_on_teleport = queue_on_teleport or function() end
 local isfile = isfile or function(file)
-    local suc, res = pcall(function()
-        return readfile(file)
-    end)
-    return suc and res ~= nil and res ~= ''
+	local suc, res = pcall(function()
+		return readfile(file)
+	end)
+	return suc and res ~= nil and res ~= ''
 end
 local cloneref = cloneref or function(obj)
-    return obj
+	return obj
 end
 local playersService = cloneref(game:GetService('Players'))
 
 local function downloadFile(path, func)
-    if not isfile(path) then
-        local suc, res = pcall(function()
-            return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/'..select(1, path:gsub('newvape/', '')), true)
-        end)
-        if not suc or res == '404: Not Found' then
-            error(res)
-        end
-        if path:find('.lua') then
-            res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res
-        end
-        writefile(path, res)
-    end
-    return (func or readfile)(path)
-end
-
-if not shared.VapeDeveloper then
-    if not canDebug then
-        local cacheFiles = {
-            'cache/Xeno.lua',
-            'cache/Solara.lua'
-        }
-        
-        for _, cacheFile in pairs(cacheFiles) do
-            local path = 'newvape/'..cacheFile
-            if not isfile(path) then
-                local suc, res = pcall(function()
-                    return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/'..cacheFile, true)
-                end)
-                if suc and res ~= '404: Not Found' then
-                    if not isfolder('newvape/cache') then
-                        makefolder('newvape/cache')
-                    end
-                    writefile(path, res)
-                end
-            end
-        end
-    end
+	if not isfile(path) then
+		local suc, res = pcall(function()
+			return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/'..select(1, path:gsub('newvape/', '')), true)
+		end)
+		if not suc or res == '404: Not Found' then
+			error(res)
+		end
+		if path:find('.lua') then
+			res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.\n'..res
+		end
+		writefile(path, res)
+	end
+	return (func or readfile)(path)
 end
 
 local function checkAccountActive()
@@ -265,20 +227,14 @@ local function startActiveCheck()
 end
 
 local function finishLoading()
-    vape.Init = nil
-    vape:Load()
-    
-    if touchEnabled and vape.VapeButton then
-        vape.VapeButton.Size = UDim2.new(0, 50, 0, 50)
-        vape.VapeButton.Position = UDim2.new(1, -60, 0, 10)
-    end
-    
-    task.spawn(function()
-        repeat
-            vape:Save()
-            task.wait(10)
-        until not vape.Loaded
-    end)
+	vape.Init = nil
+	vape:Load()
+	task.spawn(function()
+		repeat
+			vape:Save()
+			task.wait(10)
+		until not vape.Loaded
+	end)
 
     if shared.ValidatedUsername then
         task.spawn(function()
@@ -286,99 +242,64 @@ local function finishLoading()
         end)
     end
 
-    local teleportedServers
-    vape:Clean(playersService.LocalPlayer.OnTeleport:Connect(function()
-        if (not teleportedServers) and (not shared.VapeIndependent) then
-            teleportedServers = true
-            local teleportScript = [[
-                shared.vapereload = true
-                if shared.VapeDeveloper then
-                    loadstring(readfile('newvape/loader.lua'), 'loader')()
-                else
-                    loadstring(game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/loader.lua', true), 'loader')()
-                end
-            ]]
-            if shared.VapeDeveloper then
-                teleportScript = 'shared.VapeDeveloper = true\n'..teleportScript
-            end
-            if shared.VapeCustomProfile then
-                teleportScript = 'shared.VapeCustomProfile = "'..shared.VapeCustomProfile..'"\n'..teleportScript
-            end
-            vape:Save()
-            queue_on_teleport(teleportScript)
-        end
-    end))
+	local teleportedServers
+	vape:Clean(playersService.LocalPlayer.OnTeleport:Connect(function()
+		if (not teleportedServers) and (not shared.VapeIndependent) then
+			teleportedServers = true
+			local teleportScript = [[
+				shared.vapereload = true
+				if shared.VapeDeveloper then
+					loadstring(readfile('newvape/loader.lua'), 'loader')()
+				else
+					loadstring(game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/loader.lua', true), 'loader')()
+				end
+			]]
+			if shared.VapeDeveloper then
+				teleportScript = 'shared.VapeDeveloper = true\n'..teleportScript
+			end
+			if shared.VapeCustomProfile then
+				teleportScript = 'shared.VapeCustomProfile = "'..shared.VapeCustomProfile..'"\n'..teleportScript
+			end
+			vape:Save()
+			queue_on_teleport(teleportScript)
+		end
+	end))
 
-    if not shared.vapereload then
-        if not vape.Categories then return end
-        if vape.Categories.Main.Options['GUI bind indicator'].Enabled then
-            local notificationText = touchEnabled and 
-                'wsg, '..shared.ValidatedUsername..'! Press the button in the top right to open GUI' or 
-                'wsg, '..shared.ValidatedUsername..'! Press '..table.concat(vape.Keybind, ' + '):upper()..' to open GUI'
-            
-            vape:CreateNotification('Finished Loading', notificationText, 5)
-        end
-    end
+	if not shared.vapereload then
+		if not vape.Categories then return end
+		if vape.Categories.Main.Options['GUI bind indicator'].Enabled then
+			vape:CreateNotification('Finished Loading', 'wsg, '..shared.ValidatedUsername..'! '..(vape.VapeButton and 'Press the button in the top right to open GUI' or 'Press '..table.concat(vape.Keybind, ' + '):upper()..' to open GUI'), 5)
+		end
+	end
 end
 
 if not isfile('newvape/profiles/gui.txt') then
-    writefile('newvape/profiles/gui.txt', 'new')
+	writefile('newvape/profiles/gui.txt', 'new')
 end
 local gui = readfile('newvape/profiles/gui.txt')
 
 if not isfolder('newvape/assets/'..gui) then
-    makefolder('newvape/assets/'..gui)
+	makefolder('newvape/assets/'..gui)
 end
 vape = loadstring(downloadFile('newvape/guis/'..gui..'.lua'), 'gui')()
 shared.vape = vape
 
 if not shared.VapeIndependent then
-    loadstring(downloadFile('newvape/games/universal.lua'), 'universal')()
-    
-    local function loadGameScript()
-        if isfile('newvape/games/'..game.PlaceId..'.lua') then
-            loadstring(readfile('newvape/games/'..game.PlaceId..'.lua'), tostring(game.PlaceId))(...)
-        else
-            if not shared.VapeDeveloper then
-                local suc, res = pcall(function()
-                    return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/games/'..game.PlaceId..'.lua', true)
-                end)
-                if suc and res ~= '404: Not Found' then
-                    loadstring(downloadFile('newvape/games/'..game.PlaceId..'.lua'), tostring(game.PlaceId))(...)
-                end
-            end
-        end
-    end
-    
-    local function callback(func)
-        local success, result
-        task.spawn(function()
-            success, result = pcall(func)
-        end)
-        local Start = os.clock()
-        repeat task.wait() until success ~= nil or (os.clock() - Start) >= 10
-        return success, result
-    end
-    
-    local success, result = callback(loadGameScript)
-    
-    if success then
-        finishLoading()
-    else
-        if not getgenv().closet then
-            task.spawn(function()
-                if setthreadidentity then
-                    setthreadidentity(8)
-                end
-                game.StarterGui:SetCore("SendNotification", {
-                    Title = "Loading Error",
-                    Text = "Failed to load: "..tostring(result):sub(1, 100),
-                    Duration = 10
-                })
-            end)
-        end
-    end
+	loadstring(downloadFile('newvape/games/universal.lua'), 'universal')()
+	if isfile('newvape/games/'..game.PlaceId..'.lua') then
+		loadstring(readfile('newvape/games/'..game.PlaceId..'.lua'), tostring(game.PlaceId))(...)
+	else
+		if not shared.VapeDeveloper then
+			local suc, res = pcall(function()
+				return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/games/'..game.PlaceId..'.lua', true)
+			end)
+			if suc and res ~= '404: Not Found' then
+				loadstring(downloadFile('newvape/games/'..game.PlaceId..'.lua'), tostring(game.PlaceId))(...)
+			end
+		end
+	end
+	finishLoading()
 else
-    vape.Init = finishLoading
-    return vape
+	vape.Init = finishLoading
+	return vape
 end
