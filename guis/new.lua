@@ -1,4 +1,5 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
+--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local mainapi = {
 	Categories = {},
 	GUIColor = {
@@ -5791,6 +5792,11 @@ mainapi:CreateCategory({
 })
 mainapi:CreateCategory({
 	Name = 'BoostFPS',
+	Icon = getcustomasset('newvape/assets/new/pin.png'),
+	Size = UDim2.fromOffset(20, 18)
+})
+mainapi:CreateCategory({
+	Name = 'Kits',
 	Icon = getcustomasset('newvape/assets/new/vape.png'),
 	Size = UDim2.fromOffset(20, 18)
 })
