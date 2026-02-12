@@ -334,7 +334,8 @@ run(function()
 	local WIN_TEXT_PULL_LEFT = 14
 	local ORIGINAL_NAMETAG_SCALE = 1.17
 	local TITLE_TEXT_SIZE = 14
-	local FLAME_ASPECT_RATIO = 0.8  
+	local FLAME_ASPECT_RATIO = 0.8
+	local USE_TEXT_SCALED = false
 	
 	local KnitClient
 	do
@@ -581,7 +582,7 @@ run(function()
 		num.TextXAlignment = Enum.TextXAlignment.Left
 		num.TextYAlignment = Enum.TextYAlignment.Center
 		
-		num.TextScaled = false
+		num.TextScaled = USE_TEXT_SCALED
 		num.TextSize = WIN_TEXT_SIZE
 		
 		num.AnchorPoint = Vector2.new(0, 0.5)
@@ -595,7 +596,7 @@ run(function()
 	local function forceWinTextStyle(gui)
 		local num = gui and gui:FindFirstChild("WinStreak", true)
 		if num and num:IsA("TextLabel") then
-			num.TextScaled = false
+			num.TextScaled = USE_TEXT_SCALED
 			num.TextSize = WIN_TEXT_SIZE
 			num.AnchorPoint = Vector2.new(0, 0.5)
 			num.Position = UDim2.new(0.46, -WIN_TEXT_PULL_LEFT, 0.5, 0)
@@ -714,6 +715,44 @@ run(function()
 			end
 		end,
 		Tooltip = 'Custom nametag with rank icon and winstreak (lobby only)'
+	})
+	
+	local TextScaledToggle = OGNameTags:CreateToggle({
+		Name = "Text Scaled",
+		Default = false,
+		Function = function(val)
+			USE_TEXT_SCALED = val
+			if LP.Character and OGNameTags.Enabled then
+				local head = LP.Character:FindFirstChild("Head")
+				if head then
+					local gui = head:FindFirstChild("LocalRankStreakGui")
+					if gui then
+						forceWinTextStyle(gui)
+					end
+				end
+			end
+		end,
+		Tooltip = 'Enable auto text scaling for winstreak number'
+	})
+	
+	local TextSizeSlider = OGNameTags:CreateSlider({
+		Name = 'Text Size',
+		Min = 10,
+		Max = 30,
+		Default = 19,
+		Function = function(val)
+			WIN_TEXT_SIZE = val
+			if LP.Character and OGNameTags.Enabled then
+				local head = LP.Character:FindFirstChild("Head")
+				if head then
+					local gui = head:FindFirstChild("LocalRankStreakGui")
+					if gui then
+						forceWinTextStyle(gui)
+					end
+				end
+			end
+		end,
+		Tooltip = 'Manual text size for winstreak number'
 	})
 	
 	local TitleSizeSlider = OGNameTags:CreateSlider({
