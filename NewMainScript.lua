@@ -226,7 +226,69 @@ local function wipeFolder(path)
     end
 end
 
-for _, folder in {'newvape', 'newvape/games', 'newvape/profiles', 'newvape/assets', 'newvape/libraries', 'newvape/guis', 'newvape/security'} do
+local function downloadPremadeProfiles(commit)
+    local httpService = game:GetService('HttpService')
+    
+    if not isfolder('newvape/profiles/premade') then
+        makefolder('newvape/profiles/premade')
+    end
+    
+    local success, response = pcall(function()
+        return game:HttpGet('https://api.github.com/repos/'..EXPECTED_REPO_OWNER..'/'..EXPECTED_REPO_NAME..'/contents/profiles/premade?ref='..commit)
+    end)
+    
+    if success and response then
+        local files = httpService:JSONDecode(response)
+        
+        if type(files) == 'table' then
+            for _, file in pairs(files) do
+                if file.name and file.name:find('.txt') and file.name ~= 'commit.txt' then
+                    local filePath = 'newvape/profiles/premade/'..file.name
+                    
+                    if not isfile(filePath) then
+                        if file.download_url then
+                            local downloadSuccess, fileContent = pcall(function()
+                                return game:HttpGet(file.download_url, true)
+                            end)
+                            
+                            if downloadSuccess and fileContent and fileContent ~= '404: Not Found' then
+                                writefile(filePath, fileContent)
+                            end
+                        else
+                            local downloadSuccess, fileContent = pcall(function()
+                                return game:HttpGet('https://raw.githubusercontent.com/'..EXPECTED_REPO_OWNER..'/'..EXPECTED_REPO_NAME..'/'..commit..'/profiles/premade/'..file.name, true)
+                            end)
+                            
+                            if downloadSuccess and fileContent ~= '404: Not Found' then
+                                writefile(filePath, fileContent)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    else
+        local profiles = {
+            'aero6872274481.txt',
+            'aero6872265039.txt',
+        }
+        
+        for _, profileName in ipairs(profiles) do
+            local filePath = 'newvape/profiles/premade/'..profileName
+            if not isfile(filePath) then
+                local downloadSuccess, fileContent = pcall(function()
+                    return game:HttpGet('https://raw.githubusercontent.com/'..EXPECTED_REPO_OWNER..'/'..EXPECTED_REPO_NAME..'/'..commit..'/profiles/premade/'..profileName, true)
+                end)
+                
+                if downloadSuccess and fileContent ~= '404: Not Found' then
+                    writefile(filePath, fileContent)
+                end
+            end
+        end
+    end
+end
+
+for _, folder in {'newvape', 'newvape/games', 'newvape/profiles', 'newvape/profiles/premade', 'newvape/assets', 'newvape/libraries', 'newvape/guis', 'newvape/security'} do
     if not isfolder(folder) then
         makefolder(folder)
     end
@@ -239,12 +301,18 @@ if not shared.VapeDeveloper then
     local commit = subbed:find('currentOid')
     commit = commit and subbed:sub(commit + 13, commit + 52) or nil
     commit = commit and #commit == 40 and commit or 'main'
-    if commit == 'main' or (isfile('newvape/profiles/commit.txt') and readfile('newvape/profiles/commit.txt') or '') ~= commit then
+    
+    local needsUpdate = commit == 'main' or (isfile('newvape/profiles/commit.txt') and readfile('newvape/profiles/commit.txt') or '') ~= commit
+    
+    if needsUpdate then
         wipeFolder('newvape')
         wipeFolder('newvape/games')
         wipeFolder('newvape/guis')
         wipeFolder('newvape/libraries')
     end
+    
+    downloadPremadeProfiles(commit)
+    
     writefile('newvape/profiles/commit.txt', commit)
 end
 
