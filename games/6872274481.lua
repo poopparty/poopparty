@@ -21034,7 +21034,7 @@ run(function()
         local nameColor = getNameColor(player, character)
         local teamDotColor = getTeamColor(player, character)
         
-        local dotSize = DotSizeSlider and DotSizeSlider.Value or 0.14
+        local dotPx = DotSizeSlider and DotSizeSlider.Value or 22
         local dotPosition = DotPositionSlider and DotPositionSlider.Value or 0.10
         
         local billui = create("BillboardGui", {
@@ -21056,15 +21056,10 @@ run(function()
             Parent = Main,
             BackgroundColor3 = teamDotColor,
             BackgroundTransparency = 0.1,
-            Position = UDim2.fromScale(0.02, dotPosition),
-            Size = UDim2.fromScale(dotSize, 0.80), 
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0.02, 0, dotPosition + 0.4, 0),
+            Size = UDim2.fromOffset(dotPx, dotPx),
             BorderSizePixel = 0
-        })
-        
-        create("UIAspectRatioConstraint", {
-            Parent = Dot,
-            AspectRatio = 1,
-            DominantAxis = Enum.DominantAxis.Height  
         })
         
         create("UICorner", {Parent = Dot, CornerRadius = UDim.new(1, 0)})
@@ -21146,7 +21141,7 @@ run(function()
         local teamDotColor = getTeamColor(player, character)
         local clan = getClan(player)
         
-        local dotSize = DotSizeSlider and DotSizeSlider.Value or 0.14
+        local dotPx = DotSizeSlider and DotSizeSlider.Value or 22
         local dotPosition = DotPositionSlider and DotPositionSlider.Value or 0.10
         
         local billui = create("BillboardGui", {
@@ -21168,15 +21163,10 @@ run(function()
             Parent = Main,
             BackgroundColor3 = teamDotColor,
             BackgroundTransparency = 0.1,
-            Position = UDim2.fromScale(0.02, dotPosition),
-            Size = UDim2.fromScale(dotSize, 0.80),
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0.02, 0, dotPosition + 0.4, 0),
+            Size = UDim2.fromOffset(dotPx, dotPx),
             BorderSizePixel = 0
-        })
-        
-        create("UIAspectRatioConstraint", {
-            Parent = Dot,
-            AspectRatio = 1,
-            DominantAxis = Enum.DominantAxis.Height
         })
         
         create("UICorner", {Parent = Dot, CornerRadius = UDim.new(1, 0)})
@@ -21369,16 +21359,16 @@ run(function()
 
     DotSizeSlider = OGNametags:CreateSlider({
         Name = "Dot Size",
-        Min = 0.05,
-        Max = 0.35,
-        Default = 0.14,
-        Decimal = 100,
-        Suffix = "x",
+        Min = 4,
+        Max = 60,
+        Default = 22,
+        Decimal = 1,
+        Suffix = "px",
         Tooltip = "Adjust the size of the colored team dot",
         Function = function(val)
             for _, tagData in pairs(ActiveTags) do
                 if tagData and tagData.dot then
-                    tagData.dot.Size = UDim2.fromScale(val, 0.80)
+                    tagData.dot.Size = UDim2.fromOffset(val, val)
                 end
             end
         end
@@ -21390,11 +21380,11 @@ run(function()
         Max = 0.30,
         Default = 0.10,
         Decimal = 100,
-        Tooltip = "Move the dot left or right",
+        Tooltip = "Move the dot up or down",
         Function = function(val)
             for _, tagData in pairs(ActiveTags) do
                 if tagData and tagData.dot then
-                    tagData.dot.Position = UDim2.fromScale(0.02, val)
+                    tagData.dot.Position = UDim2.new(0.02, 0, val + 0.4, 0)
                 end
             end
         end
