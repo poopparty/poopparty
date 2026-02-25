@@ -1218,7 +1218,7 @@ run(function()
 					v.Jumping = false
 				end
 			end
-			task.wait()
+			task.wait(0.05)
 		until vape.Loaded == nil
 	end)
 
