@@ -2445,6 +2445,7 @@ run(function()
         local KeybindHeld = false
         local KeybindActive = false
         local ActivationScheduled = nil
+        local MIN_HOLD_TIME = 0.12
 
         local task_wait = task.wait
         local task_spawn = task.spawn
@@ -2724,12 +2725,23 @@ run(function()
                     else
                         AutoClicker:Clean(inputService.InputBegan:Connect(function(input)
                             if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                if not _G.autoShootLock then AutoClick() end
+                                if not _G.autoShootLock then
+                                    ActivationScheduled = task.delay(MIN_HOLD_TIME, function()
+                                        ActivationScheduled = nil
+                                        if inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+                                            AutoClick()
+                                        end
+                                    end)
+                                end
                             end
                         end))
                         AutoClicker:Clean(inputService.InputEnded:Connect(function(input)
                             if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                                if not _G.autoShootLock and Thread and (os.clock() - getgenv().swapping) > 0.12 then
+                                if ActivationScheduled then
+                                    task.cancel(ActivationScheduled)
+                                    ActivationScheduled = nil
+                                end
+                                if Thread then
                                     task.cancel(Thread)
                                     Thread = nil
                                 end
