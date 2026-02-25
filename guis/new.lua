@@ -1,5 +1,6 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
+--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local mainapi = {
 	Categories = {},
 	GUIColor = {
@@ -16,8 +17,8 @@ local mainapi = {
 	Profile = 'default',
 	Profiles = {},
 	RainbowSpeed = {Value = 1},
-	RainbowUpdateSpeed = {Value = 60},
-	RainbowTable = {},
+	RainbowUpdateSpeed = {Value = 40},
+	RainbowTable = setmetatable({}, {__mode = "v"}),
 	Scale = {Value = 1},
 	ThreadFix = setthreadidentity and true or false,
 	ToggleNotifications = {},
