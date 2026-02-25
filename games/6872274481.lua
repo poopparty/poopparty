@@ -51,25 +51,24 @@ local prediction = vape.Libraries.prediction
 local getfontsize = vape.Libraries.getfontsize
 local getcustomasset = vape.Libraries.getcustomasset
 
-
 local store = {
-	attackReach = 0,
-	attackReachUpdate = tick(),
-	damage = {},
-	damageBlockFail = tick(),
-	hand = {},
-	localHand = {},
-	inventory = {
-		inventory = {
-			items = {},
-			armor = {}
-		},
-		hotbar = {}
-	},
-	inventories = {},
-	matchState = 0,
-	queueType = 'bedwars_test',
-	tools = {}
+    attackReach = 0,
+    attackReachUpdate = tick(),
+    damage = {},
+    damageBlockFail = tick(),
+    hand = {},
+    localHand = {},
+    inventory = {
+        inventory = {
+            items = {},
+            armor = {}
+        },
+        hotbar = {}
+    },
+    inventories = setmetatable({}, { __mode = "k" }), 
+    matchState = 0,
+    queueType = 'bedwars_test',
+    tools = {}
 }
 local Reach = {}
 local HitBoxes = {}
@@ -826,7 +825,6 @@ run(function()
 		UpgradeFrostyHammer = 'UpgradeFrostyHammer',
 	}
 
-	-- Ensure all preDumped remotes are present
 	for k, v in pairs(preDumped) do
 		if not remotes[k] then
 			remotes[k] = v
@@ -1130,6 +1128,11 @@ run(function()
 			knockbackId = select(7, ...),
 			disableDamageHighlight = select(13, ...)
 		})
+
+	local playerRemoveConn = playersService.PlayerRemoving:Connect(function(plr)
+		store.inventories[plr] = nil
+	end)
+	vape:Clean(playerRemoveConn)
 	end))
 
 	for _, event in {'PlaceBlockEvent', 'BreakBlockEvent'} do
