@@ -806,8 +806,32 @@ run(function()
 	end
 
 	local preDumped = {
-		EquipItem = 'SetInvItem'
+		EquipItem = 'SetInvItem',
+		ActivateGravestone = 'ActivateGravestone',
+		CollectCollectableEntity = 'CollectCollectableEntity',
+		DefenderRequestPlaceBlock = 'DefenderRequestPlaceBlock',
+		RequestDragonPunch = 'RequestDragonPunch',
+		CropHarvest = 'CropHarvest',
+		DepositCoins = 'DepositCoins',
+		BedwarsPurchaseItem = 'BedwarsPurchaseItem',
+		BedBreakEffectTriggered = 'BedBreakEffectTriggered',
+		BloodAssassinSelectContract = 'BloodAssassinSelectContract',
+		MimicBlock = 'MimicBlock',
+		TeleportToLobby = 'TeleportToLobby',
+		FishCaught = 'FishCaught',
+		SpawnRaven = 'SpawnRaven',
+		PaladinAbilityRequest = 'PaladinAbilityRequest',
+		OwlActionAbilities = 'OwlActionAbilities',
+		DrillAttack = 'DrillAttack',
+		UpgradeFrostyHammer = 'UpgradeFrostyHammer',
 	}
+
+	-- Ensure all preDumped remotes are present
+	for k, v in pairs(preDumped) do
+		if not remotes[k] then
+			remotes[k] = v
+		end
+	end
 
 	for i, v in remoteNames do
 		local remote = dumpRemote(debug.getconstants(v))
@@ -11781,7 +11805,7 @@ run(function()
 				local associatedPlayerUserId = v:GetAttribute('GravestonePlayerUserId')
 				local secret = v:GetAttribute('GravestoneSecret')
 				local position = v:GetAttribute('GravestonePosition')
-				if bedwars.Client:Get('ActivateGravestone'):CallServer({skeletonData={armorType=armorType,weaponType=weaponType,associatedPlayerUserId=associatedPlayerUserId},secret=secret,position=position}) then
+				if bedwars.Client:Get(remotes.ActivateGravestone):CallServer({skeletonData={armorType=armorType,weaponType=weaponType,associatedPlayerUserId=associatedPlayerUserId},secret=secret,position=position}) then
 					if Legit.Enabled then
 						bedwars.GameAnimationUtil:playAnimation(lplr.Character, bedwars.AnimationType.PUNCH)
 						bedwars.ViewmodelController:playAnimation(bedwars.AnimationType.FP_USE_ITEM)
@@ -11845,7 +11869,7 @@ run(function()
 				r = 16
 			end
 			kitCollection('alchemy_crystal', function(v)
-			    bedwars.Client:Get("CollectCollectableEntity"):SendToServer({id = v:GetAttribute("Id"),collectableName = v.Name})
+			    bedwars.Client:Get(remotes.CollectCollectableEntity):SendToServer({id = v:GetAttribute("Id"),collectableName = v.Name})
 			end, r, false)
 		end,
 		davey = function()
@@ -11889,7 +11913,7 @@ run(function()
 				r = 16
 			end
 			kitCollection('alchemist_ingedients', function(v)
-			    bedwars.Client:Get("CollectCollectableEntity"):SendToServer({id = v:GetAttribute("Id"),collectableName = v.Name})
+			    bedwars.Client:Get(remotes.CollectCollectableEntity):SendToServer({id = v:GetAttribute("Id"),collectableName = v.Name})
 			end, r, false)
         end,
 		defender = function()
@@ -11913,7 +11937,7 @@ run(function()
 							v.Transparency = 0.85
 							v.Grid.Transparency = 1
 							local BP = bedwars.BlockController:getBlockPosition(v.Position)
-							bedwars.Client:Get("DefenderRequestPlaceBlock"):CallServer({["blockPos"] = BP})
+							bedwars.Client:Get(remotes.DefenderRequestPlaceBlock):CallServer({["blockPos"] = BP})
 							pcall(function()
 								local sounds = {
 									bedwars.SoundList.DEFENDER_UPGRADE_DEFENSE_04,
@@ -12024,7 +12048,7 @@ run(function()
 				
 				bedwars.DragonSlayerController:playPunchAnimation(lookAtCFrame - lookAtCFrame.Position)
 				
-				bedwars.Client:Get("RequestDragonPunch"):SendToServer({
+				bedwars.Client:Get(remotes.RequestDragonPunch):SendToServer({
 					target = v
 				})
 			end, 18, true)
@@ -12147,14 +12171,11 @@ run(function()
 			end
 			
 			kitCollection('HarvestableCrop', function(v)
+			bedwars.Client:Get('CropHarvest'):CallServer({position = bedwars.BlockController:getBlockPosition(v.Position)})
 				bedwars.GameAnimationUtil:playAnimation(lplr.Character, bedwars.AnimationType.PUNCH)
 				bedwars.ViewmodelController:playAnimation(bedwars.AnimationType.FP_USE_ITEM)
 				bedwars.SoundManager:playSound(bedwars.SoundList.CROP_HARVEST)
-				
-				bedwars.Client:Get('CropHarvest'):CallServer({
-					position = bedwars.BlockController:getBlockPosition(v.Position)
-				})
-			end, r, false)
+			end,  r, false)
 		end,
 		melody = function()
 			repeat
@@ -12214,7 +12235,7 @@ run(function()
 			end
 			kitCollection(lplr.Name..':pinata', function(v)
 				if getItem('candy') then
-					bedwars.Client:Get('DepositCoins'):CallServer(v)
+					bedwars.Client:Get(remotes.DepositCoins):CallServer(v)
 				end
 			end,  r, true)
 		end,
@@ -12409,7 +12430,7 @@ run(function()
 				r = 16
 			end
 			kitCollection('shadow_coin', function(v)
-			    bedwars.Client:Get("CollectCollectableEntity"):SendToServer({id = v:GetAttribute("Id"),collectableName = 'shadow_coin'})
+			    bedwars.Client:Get(remotes.CollectCollectableEntity):SendToServer({id = v:GetAttribute("Id"),collectableName = 'shadow_coin'})
 			end, r, false)
 		end,
 		melody = function()
@@ -15697,7 +15718,7 @@ run(function()
 	local function buyItem(item, currencytable)
 		if not id then return end
 		notif('AutoBuy', 'Bought '..bedwars.ItemMeta[item.itemType].displayName, 3)
-		bedwars.Client:Get('BedwarsPurchaseItem'):CallServerAsync({
+		bedwars.Client:Get(remotes.BedwarsPurchaseItem):CallServerAsync({
 			shopItem = item,
 			shopId = id
 		}):andThen(function(suc)
@@ -17833,7 +17854,7 @@ run(function()
 		Function = function(callback)
 			if callback then
 	            BedBreakEffect:Clean(vapeEvents.BedwarsBedBreak.Event:Connect(function(data)
-	                firesignal(bedwars.Client:Get('BedBreakEffectTriggered').instance.OnClientEvent, {
+	                firesignal(bedwars.Client:Get(remotes.BedBreakEffectTriggered).instance.OnClientEvent, {
 	                    player = data.player,
 	                    position = data.bedBlockPosition * 3,
 	                    effectType = NameToId[List.Value],
@@ -23451,9 +23472,9 @@ run(function()
                             local targetPlayer = getTargetPlayer()
                             
                             if targetPlayer and targetPlayer.Character then
-                                bedwars.Client:Get("PaladinAbilityRequest"):SendToServer({target = targetPlayer})
+                                bedwars.Client:Get(remotes.PaladinAbilityRequest):SendToServer({target = targetPlayer})
                             else
-                                bedwars.Client:Get("PaladinAbilityRequest"):SendToServer({})
+                                bedwars.Client:Get(remotes.PaladinAbilityRequest):SendToServer({})
                             end
                             
                             task.wait(0.022)
@@ -24404,7 +24425,7 @@ run(function()
         
         for _, contract in pairs(availableContracts) do
             if contract.target == targetPlayer then
-                bedwars.Client:Get("BloodAssassinSelectContract"):SendToServer({
+                bedwars.Client:Get(remotes.BloodAssassinSelectContract):SendToServer({
                     contractId = contract.id
                 })
                 lastContractSelect = tick()
@@ -24995,7 +25016,7 @@ run(function()
 							["blockType"] = Blocks.Value or 'wool_red'
 						}
 					}
-					bedwars.Client:Get("MimicBlock"):SendToServer(v88)
+					bedwars.Client:Get(remotes.MimicBlock):SendToServer(v88)
 				end)
 			end
 			if bedwars.AbilityController:canUseAbility("MIMIC_BLOCK") then
@@ -25024,7 +25045,7 @@ run(function()
 			end
 			Lobby:Toggle(false)
 			local s,err = pcall(function()
-				bedwars.Client:Get("TeleportToLobby"):SendToServer()
+				bedwars.Client:Get(remotes.TeleportToLobby):SendToServer()
 			end)
 			if not s then
 				warn(err)
@@ -25270,7 +25291,7 @@ run(function()
             return
         end
         
-        bedwars.Client:WaitFor("FishCaught"):andThen(function(rbx)
+        bedwars.Client:WaitFor(remotes.FishCaught):andThen(function(rbx)
             Fisherman:Clean(rbx:Connect(function(tbl)
                 local char = tbl.catchingPlayer.Character
                 local fish = tbl.dropData.fishModel
@@ -25752,7 +25773,7 @@ run(function()
         if not currentTarget then return end
         
         pcall(function()
-            bedwars.Client:Get("OwlActionAbilities"):SendToServer({
+            bedwars.Client:Get(remotes.OwlActionAbilities):SendToServer({
                 target = currentTarget,
                 ability = "owl_heal"
             })
@@ -25800,7 +25821,7 @@ run(function()
         if not currentTarget then return end
         
         pcall(function()
-            bedwars.Client:Get("OwlActionAbilities"):SendToServer({
+            bedwars.Client:Get(remotes.OwlActionAbilities):SendToServer({
                 target = currentTarget,
                 ability = "owl_lift"
             })
@@ -30408,7 +30429,7 @@ run(function()
                                 bedwars.ViewmodelController:playAnimation(bedwars.AnimationType.FP_USE_ITEM)
                                 bedwars.SoundManager:playSound(bedwars.SoundList.CROP_HARVEST)
                             end
-                            bedwars.Client:Get('CropHarvest'):CallServer({
+                           bedwars.Client:Get(remotes.HarvestCrop):CallServer({
                                 position = bedwars.BlockController:getBlockPosition(v.Position)
                             })
                         end, RangeSlider.Value, false)
@@ -30453,7 +30474,7 @@ run(function()
                             bedwars.ViewmodelController:playAnimation(bedwars.AnimationType.FP_USE_ITEM)
                             bedwars.SoundManager:playSound(bedwars.SoundList.CROP_HARVEST)
                         end
-                        bedwars.Client:Get('CropHarvest'):CallServer({
+                       bedwars.Client:Get(remotes.HarvestCrop):CallServer({
                             position = bedwars.BlockController:getBlockPosition(v.Position)
                         })
                     end, RangeSlider.Value, false)
@@ -32434,7 +32455,7 @@ run(function()
                         end)
                         local target = enemies[1]
                         pcall(function()
-                            game:GetService("ReplicatedStorage"):WaitForChild("rbxts_include"):WaitForChild("node_modules"):WaitForChild("@rbxts"):WaitForChild("net"):WaitForChild("out"):WaitForChild("_NetManaged"):WaitForChild("DrillAttack"):FireServer({
+                            bedwars.Client:Get(remotes.DrillAttack):FireServer({
                                 targetPosition = target.position
                             })
                         end)
@@ -33347,7 +33368,7 @@ run(function()
 				})
 	
 				if getItem('raven') and plr then
-					bedwars.Client:Get("SpawnRaven"):CallServerAsync():andThen(function(projectile)
+					bedwars.Client:Get(remotes.SpawnRaven):CallServerAsync():andThen(function(projectile)
 						if projectile then
 							local ravenPart = projectile:FindFirstChild("Root") or projectile:FindFirstChildWhichIsA("BasePart")
 							
@@ -35176,7 +35197,7 @@ run(function()
         end)
         
         local success = pcall(function()
-            bedwars.Client:Get("RequestDragonPunch"):SendToServer({
+            bedwars.Client:Get(remotes.RequestDragonPunch):SendToServer({
                 target = target
             })
         end)
@@ -37117,7 +37138,7 @@ run(function()
                         local r = RangeSlider.Value
                         kitCollection(lplr.Name..':pinata', function(v)
                             if getItem('candy') then
-                                bedwars.Client:Get('DepositCoins'):CallServer(v)
+                                bedwars.Client:Get(remotes.DepositCoins):CallServer(v)
                             end
                         end, r, true)
                     end)
