@@ -36605,7 +36605,7 @@ run(function()
 	end
 	
 	StreamProof = vape.Categories.Render:CreateModule({
-		Name = 'Stream Proof',
+		Name = 'IncognitoCE',
 		Function = function(callback)
 			if callback then
 				local existingTabList = lplr.PlayerGui:FindFirstChild("TabListScreenGui")
