@@ -1,7 +1,14 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
+print("main starting")
 repeat task.wait() until game:IsLoaded()
 if shared.vape then shared.vape:Uninject() end
+
+if identifyexecutor then
+    if table.find({'Argon', 'Wave'}, ({identifyexecutor()})[1]) then
+        getgenv().setthreadidentity = nil
+    end
+end
 
 local args = ...
 if type(args) == "table" and args.Username then
@@ -9,9 +16,8 @@ if type(args) == "table" and args.Username then
 end
 
 local vape
-local real_loadstring = loadstring
 local loadstring = function(...)
-    local res, err = real_loadstring(...)
+    local res, err = loadstring(...)
     if err and vape then
         vape:CreateNotification('vape', 'failed to load: ' .. err, 30, 'alert')
     end
@@ -112,3 +118,5 @@ else
     vape.Init = finishLoading
     return vape
 end
+
+print("main passed")
