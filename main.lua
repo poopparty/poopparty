@@ -1,6 +1,5 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
-print("main starting")
 repeat task.wait() until game:IsLoaded()
 if shared.vape then shared.vape:Uninject() end
 
@@ -118,5 +117,3 @@ else
     vape.Init = finishLoading
     return vape
 end
-
-print("main passed")
