@@ -1,6 +1,7 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
+--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local mainapi = {
 	Categories = {},
 	GUIColor = {
@@ -3718,6 +3719,10 @@ function mainapi:CreateCategory(categorysettings)
 
 	function categoryapi:CreateModule(modulesettings)
 		mainapi:Remove(modulesettings.Name)
+		if mainapi.ThreadFix then
+			setthreadidentity(8)
+		end
+
 		local moduleapi = {
 			Enabled = false,
 			Options = {},
