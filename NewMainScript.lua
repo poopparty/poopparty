@@ -13,68 +13,75 @@ local function createNotification(title, text, duration)
     end)
 end
 
-local passedArgs = {}
-local rawArgs = ...
-if type(rawArgs) == "table" then
-    passedArgs = rawArgs
-end
+local executor = (identifyexecutor and {pcall(identifyexecutor)} or {})[2]
+local isWave = executor and (executor:lower():find("wave") or executor:lower():find("water"))
 
-local isPremiumLogin = type(passedArgs.Username) == "string" and #passedArgs.Username > 0
-                    and type(passedArgs.Password) == "string" and #passedArgs.Password > 0
-
-if isPremiumLogin then
-    local function fetchAccounts()
-        local success, response = pcall(function()
-            return game:HttpGet(ACCOUNT_SYSTEM_URL)
-        end)
-        if success and response then
-            local accountsTable = loadstring(response)()
-            if accountsTable and accountsTable.Accounts then
-                return accountsTable.Accounts
-            end
-        end
-        return nil
-    end
-
-    local accounts = fetchAccounts()
-    if not accounts then
-        createNotification("error", "failed to check account. check ur wifi. dm aero", 3)
-        return
-    end
-
-    local accountFound = false
-    local correctPassword = false
-    local accountActive = false
-
-    for _, account in pairs(accounts) do
-        if account.Username == passedArgs.Username then
-            accountFound = true
-            if account.Password == passedArgs.Password then
-                correctPassword = true
-                accountActive = account.IsActive == true
-            end
-            break
-        end
-    end
-
-    if not accountFound then
-        createNotification("access denied", "username not found. dm 5qvx for access", 3)
-        return
-    end
-
-    if not correctPassword then
-        createNotification("access denied", "wrong password for " .. passedArgs.Username, 3)
-        return
-    end
-
-    if not accountActive then
-        createNotification("account inactive", "ur account is currently inactive", 3)
-        return
-    end
-
-    shared.ValidatedUsername = passedArgs.Username
-else
+if isWave then
     shared.ValidatedUsername = nil
+else
+    local passedArgs = {}
+    local rawArgs = ...
+    if type(rawArgs) == "table" then
+        passedArgs = rawArgs
+    end
+
+    local isPremiumLogin = type(passedArgs.Username) == "string" and #passedArgs.Username > 0
+                        and type(passedArgs.Password) == "string" and #passedArgs.Password > 0
+
+    if isPremiumLogin then
+        local function fetchAccounts()
+            local success, response = pcall(function()
+                return game:HttpGet(ACCOUNT_SYSTEM_URL)
+            end)
+            if success and response then
+                local accountsTable = loadstring(response)()
+                if accountsTable and accountsTable.Accounts then
+                    return accountsTable.Accounts
+                end
+            end
+            return nil
+        end
+
+        local accounts = fetchAccounts()
+        if not accounts then
+            createNotification("error", "failed to check account. check ur wifi. dm aero", 3)
+            return
+        end
+
+        local accountFound = false
+        local correctPassword = false
+        local accountActive = false
+
+        for _, account in pairs(accounts) do
+            if account.Username == passedArgs.Username then
+                accountFound = true
+                if account.Password == passedArgs.Password then
+                    correctPassword = true
+                    accountActive = account.IsActive == true
+                end
+                break
+            end
+        end
+
+        if not accountFound then
+            createNotification("access denied", "username not found. dm 5qvx for access", 3)
+            return
+        end
+
+        if not correctPassword then
+            createNotification("access denied", "wrong password for " .. passedArgs.Username, 3)
+            return
+        end
+
+        if not accountActive then
+            createNotification("account inactive", "ur account is currently inactive", 3)
+            return
+        end
+
+        shared.ValidatedUsername = passedArgs.Username
+    else
+        shared.ValidatedUsername = nil
+    end
 end
 
 local isfile = isfile or function(file)
