@@ -3,13 +3,6 @@
 repeat task.wait() until game:IsLoaded()
 if shared.vape then shared.vape:Uninject() end
 
-if identifyexecutor then
-    if table.find({'Argon', 'Wave'}, ({identifyexecutor()})[1]) then
-        getgenv().setthreadidentity = nil
-        getgenv().setstackhidden = nil
-    end
-end
-
 local args = ...
 if type(args) == "table" and args.Username then
     shared.ValidatedUsername = args.Username
