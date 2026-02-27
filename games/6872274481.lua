@@ -1,4 +1,5 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
+--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local function safeGetProto(func, index)
     if not func then return nil end
     local success, proto = pcall(safeGetProto, func, index)
@@ -13275,9 +13276,12 @@ run(function()
     local TntCount
     local LimitItem
 
-    local function fixPosition(pos)
-        return bedwars.BlockController:getBlockPosition(pos) * 3
-    end
+	local function fixPosition(pos)
+		if bedwars and bedwars.BlockController and bedwars.BlockController.getBlockPosition then
+			return bedwars.BlockController:getBlockPosition(pos) * 3
+		end
+		return pos * 3 -- fallback for now
+	end
 
     local allOurTnt = {}
     local ourTntPositions = {}
