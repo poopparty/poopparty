@@ -359,7 +359,11 @@ local function removeTags(str)
 end
 
 local function roundPos(vec)
-	return Vector3.new(math.round(vec.X / 3) * 3, math.round(vec.Y / 3) * 3, math.round(vec.Z / 3) * 3)
+    return Vector3.new(
+        math.round(vec.X / 3) * 3,
+        math.round(vec.Y / 3) * 3,
+        math.round(vec.Z / 3) * 3
+    )
 end
 
 local function switchItem(tool, delayTime)
@@ -823,6 +827,7 @@ run(function()
 		OwlActionAbilities = 'OwlActionAbilities',
 		DrillAttack = 'DrillAttack',
 		UpgradeFrostyHammer = 'UpgradeFrostyHammer',
+		UpgradeFlamethrower = 'UpgradeFlamethrower'
 	}
 
 	for k, v in pairs(preDumped) do
@@ -14493,12 +14498,15 @@ run(function()
     local tiered, nexttier = {}, {}
     local originalGetShop
     local shopItemsTracked = {}
-    local bypassApplied = false
     
     local function applyBypassToItem(item)
-        if item and type(item) == "table" and not shopItemsTracked[item] then
-            tiered[item] = item.tiered 
-            nexttier[item] = item.nextTier 
+        if item and type(item) == "table" then
+            if not tiered[item] then 
+                tiered[item] = item.tiered 
+            end
+            if not nexttier[item] then 
+                nexttier[item] = item.nextTier 
+            end
             item.nextTier = nil
             item.tiered = nil
             shopItemsTracked[item] = true
@@ -14515,32 +14523,69 @@ run(function()
         end
     end
     
+    local function getShopController()
+        local success, result = pcall(function()
+            local RuntimeLib = require(game:GetService("ReplicatedStorage"):WaitForChild("rbxts_include"):WaitForChild("RuntimeLib"))
+            if RuntimeLib then
+                return RuntimeLib.import(script, game:GetService("ReplicatedStorage"), "TS", "games", "bedwars", "shop", "bedwars-shop")
+            end
+        end)
+        
+        if success then
+            return result
+        end
+        
+        local shopModule = game:GetService("ReplicatedStorage"):FindFirstChild("TS"):FindFirstChild("games"):FindFirstChild("bedwars"):FindFirstChild("shop"):FindFirstChild("bedwars-shop")
+        if shopModule and shopModule:IsA("ModuleScript") then
+            return require(shopModule)
+        end
+        
+        return nil
+    end
+    
     ShopTierBypass = vape.Categories.Utility:CreateModule({
-        Name = 'Shop Tier Bypass',
+        Name = 'ShopTierBypass',
         Function = function(callback)
             if callback then
                 repeat task.wait() until store.shopLoaded or not ShopTierBypass.Enabled
-                if ShopTierBypass.Enabled and not bypassApplied then
-                    bypassApplied = true
-                    
+                if ShopTierBypass.Enabled then
                     for _, v in pairs(bedwars.Shop.ShopItems) do
-                        applyBypassToItem(v)
+                        tiered[v] = v.tiered
+                        nexttier[v] = v.nextTier
+                        v.nextTier = nil
+                        v.tiered = nil
+                        shopItemsTracked[v] = true
                     end
                     
                     if bedwars.Shop.getShop and not originalGetShop then
                         originalGetShop = bedwars.Shop.getShop
                         bedwars.Shop.getShop = function(...)
                             local result = originalGetShop(...)
+                            
                             if type(result) == "table" then
                                 applyBypassToTable(result)
                             end
+                            
                             return result
+                        end
+                    end
+                    
+                    local shopController = getShopController()
+                    if shopController and shopController.BedwarsShop and shopController.BedwarsShop.getShop then
+                        if not tiered["shopControllerHooked"] then
+                            tiered["shopControllerHooked"] = true
+                            local originalControllerGetShop = shopController.BedwarsShop.getShop
+                            shopController.BedwarsShop.getShop = function(...)
+                                local result = originalControllerGetShop(...)
+                                if type(result) == "table" then
+                                    applyBypassToTable(result)
+                                end
+                                return result
+                            end
                         end
                     end
                 end
             else
-                bypassApplied = false
-                
                 for item, _ in pairs(shopItemsTracked) do
                     if item and type(item) == "table" then
                         if tiered[item] ~= nil then
@@ -14550,6 +14595,13 @@ run(function()
                             item.nextTier = nexttier[item]
                         end
                     end
+                end
+                
+                if tiered["shopControllerHooked"] then
+                    local shopController = getShopController()
+                    if shopController and shopController.BedwarsShop and shopController.BedwarsShop.getShop then
+                    end
+                    tiered["shopControllerHooked"] = nil
                 end
                 
                 if originalGetShop then
@@ -17442,28 +17494,33 @@ run(function()
 	end
 
 	local function hasDirectPathToBed(bedPos, playerPos)
-		local direction = (bedPos - playerPos).Unit
-		local distanceSq = (bedPos - playerPos).Magnitude
-		local distance = distanceSq
-		
-		local stepSize = math.max(3, Range.Value / 10)
-		
-		for i = stepSize, distance, stepSize do
-			local checkPos = playerPos + (direction * i)
-			
-			if (checkPos - bedPos).Magnitude <= 3 then
+		local dir = (bedPos - playerPos).Unit
+		local distance = (bedPos - playerPos).Magnitude
+		local step = 3
+
+		for i = step, distance, step do
+			local checkPos = playerPos + dir * i
+			local blockPos = roundPos(checkPos)
+
+			if (blockPos - bedPos).Magnitude <= 3 then
 				continue
 			end
-			
-			local block = getPlacedBlock(checkPos)
-			
-			if block then
-				if bedwars.BlockController:isBlockBreakable({blockPosition = checkPos / 3}, lplr) then
-					return false, checkPos 
+
+			local block = getPlacedBlock(blockPos)
+			if block and bedwars.BlockController:isBlockBreakable({blockPosition = blockPos / 3}, lplr) then
+				return false, blockPos
+			end
+
+			local footY = playerPos.Y - (entitylib.character.HipHeight or 2) - 0.5
+			local belowPos = roundPos(Vector3.new(blockPos.X, footY, blockPos.Z))
+			if (belowPos - bedPos).Magnitude > 3 then
+				local blockBelow = getPlacedBlock(belowPos)
+				if blockBelow and bedwars.BlockController:isBlockBreakable({blockPosition = belowPos / 3}, lplr) then
+					return false, belowPos
 				end
 			end
 		end
-		
+
 		return true, nil
 	end
 
@@ -17654,24 +17711,15 @@ run(function()
 					hit += 1
 					
 					local hasPath, blockingPos = hasDirectPathToBed(v.Position, localPosition)
-					
 					if hasPath then
 						if PathToBed.Enabled then
 							return false
 						end
 						return doBreak(v)
 					else
-						local playerMoved = hasPlayerMoved(localPosition, 2)
-						local targetChanged = currentTargetBlock ~= v
-						
-						if playerMoved or targetChanged or not currentTargetBlock then
-							currentTargetBlock = v
-						end
-						
-						local closestBlock, closestPos, closestNormal = findClosestBlockInPath(v.Position, localPosition)
-						
-						if closestBlock and closestPos then
-							return doBreak(closestBlock)
+						local block = getPlacedBlock(blockingPos)
+						if block and bedwars.BlockController:isBlockBreakable({blockPosition = blockingPos / 3}, lplr) and passesChecks(block) then
+							return doBreak(block)
 						end
 					end
 				else
@@ -19657,9 +19705,9 @@ run(function()
         Name = "CPS Limit",
         Suffix = "CPS",
         Tooltip = "Higher = faster but more ghost blocks",
-        Default = 67,
+        Default = 12,
         Min = 12,
-        Max = 100,
+        Max = 20,
         Function = function()
             if BCR.Enabled and CpsConstants then
                 local newCPS = Value.Value == 0 and 1000 or Value.Value
@@ -25067,65 +25115,60 @@ run(function()
     local MinigameAnimationToggle
     local FishermanSpyToggle
     local IgnoreTeammatesToggle
+    local BlacklistOption
+    local Blacklist
     local ESPToggle
     local ESPNotifyToggle
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local Players = game:GetService("Players")
+
+    local Players    = game:GetService("Players")
     local RunService = game:GetService("RunService")
-    local lplr = Players.LocalPlayer
-    local Folder = Instance.new('Folder')
-    Folder.Parent = vape.gui
+    local lplr       = Players.LocalPlayer
+
     local fishNames = {
-        fish_iron = "Iron Fish",
+        fish_iron    = "Iron Fish",
         fish_diamond = "Diamond Fish",
-        fish_gold = "Gold Fish",
+        fish_gold    = "Gold Fish",
         fish_special = "Special Fish",
-        fish_emerald = "Emerald Fish"
+        fish_emerald = "Emerald Fish",
     }
-    local originalCreateElement = nil
-    local moduleEnabled = false
-    local autoMinigameActive = false
-    local pullAnimationTrack = nil
-    local successAnimationTrack = nil
-    local roactHooked = false
-    local notificationQueue = {}
-    local lastNotificationTime = 0
-    local NOTIFICATION_COOLDOWN = 0.5
-    
-    local function safeNotif(title, message, duration)
-        local success, err = pcall(function()
-            notif(title, message, duration or 3)
-        end)
-        if not success then
-            warn("[Fisherman] Notification failed:", err)
-        end
-    end
-    
-    local function debugLog(message)
-        if bedwars and bedwars.DebugMode then
-            print("[Fisherman Debug]", message)
-        end
-    end
-    
-    local function processNotificationQueue()
-        local currentTime = tick()
-        
-        while #notificationQueue > 0 and (currentTime - lastNotificationTime) >= NOTIFICATION_COOLDOWN do
-            local fishType = table.remove(notificationQueue, 1)
-            local fishName = fishNames[fishType] or fishType
-            
-            if ESPNotifyToggle and ESPNotifyToggle.Enabled then
-                task.spawn(function()
-                    notif('Fisherman ESP', 'Catching a ' .. fishName, 3)
-                end)
+
+    local function buildMessage(fishModel, drops)
+        local fishName = fishNames[fishModel] or fishModel
+
+        if fishModel == "fish_special" then
+            if drops and drops[1] then
+                return "You caught a " .. fishName .. "! You will receive a " .. tostring(drops[1].itemType)
+            else
+                return "You caught a " .. fishName .. "! (special item incoming)"
             end
-            
-            lastNotificationTime = currentTime
-            task.wait(0.1)
         end
+
+        if drops and drops[1] then
+            local drop = drops[1]
+            return "You caught a " .. fishName .. "! Receiving " ..
+                   tostring(drop.amount) .. "x " .. tostring(drop.itemType)
+        end
+
+        return "You caught a " .. fishName .. "!"
     end
 
-    
+    local notifQueue = {}
+
+    local function safeNotif(title, message, duration)
+        table.insert(notifQueue, { title = title, message = message, duration = duration or 5 })
+    end
+
+    RunService.Heartbeat:Connect(function()
+        if #notifQueue == 0 then return end
+        local entry = table.remove(notifQueue, 1)
+        pcall(notif, entry.title, entry.message, entry.duration)
+    end)
+
+    local autoMinigameActive    = false
+    local pullAnimationTrack    = nil
+    local successAnimationTrack = nil
+    local espOld                = nil
+
     local function stopAllAnimations()
         if pullAnimationTrack then
             pcall(function() pullAnimationTrack:Stop() end)
@@ -25136,322 +25179,243 @@ run(function()
             successAnimationTrack = nil
         end
     end
-    
-    local function setupAutoMinigame()
+
+    local function setupESP()
         if not bedwars or not bedwars.FishingMinigameController then
-            warn("[Fisherman] bedwars.FishingMinigameController not found!")
+            warn("[AutoFisher] FishingMinigameController not found")
             return
         end
-        
+        if espOld then return end 
+        espOld = bedwars.FishingMinigameController.startMinigame
+
+        bedwars.FishingMinigameController.startMinigame = function(self, dropData, result)
+            if ESPToggle.Enabled and ESPNotifyToggle.Enabled and dropData and dropData.fishModel then
+                safeNotif("Fisherman ESP", buildMessage(dropData.fishModel, dropData.drops), 8)
+            end
+            return espOld(self, dropData, result)
+        end
+
+        Fisherman:Clean(function()
+            if espOld then
+                bedwars.FishingMinigameController.startMinigame = espOld
+                espOld = nil
+            end
+        end)
+    end
+
+    local function cleanupESP()
+        if espOld then
+            bedwars.FishingMinigameController.startMinigame = espOld
+            espOld = nil
+        end
+    end
+
+    local function setupAutoMinigame()
+        if not bedwars or not bedwars.FishingMinigameController then
+            warn("[AutoFisher] FishingMinigameController not found")
+            return
+        end
+
         local old = bedwars.FishingMinigameController.startMinigame
-        
+
         bedwars.FishingMinigameController.startMinigame = function(self, dropData, result)
             if not AutoMinigameToggle.Enabled then
                 return old(self, dropData, result)
             end
-            
+
+            if BlacklistOption.Enabled and dropData and dropData.fishModel then
+                if table.find(Blacklist.ListEnabled, dropData.fishModel) then
+                    local hum = lplr.Character and lplr.Character:FindFirstChildOfClass("Humanoid")
+                    if hum and hum:GetState() ~= Enum.HumanoidStateType.Jumping then
+                        hum:ChangeState(Enum.HumanoidStateType.Jumping)
+                    end
+                    return old(self, dropData, result)
+                end
+            end
+
             autoMinigameActive = true
-            
             stopAllAnimations()
-            
+
             if PullAnimationToggle.Enabled and CompleteDelaySlider.Value > 0 then
                 task.spawn(function()
-                    local success, track = pcall(function()
+                    local ok, track = pcall(function()
                         return bedwars.GameAnimationUtil:playAnimation(
-                            lplr, 
-                            bedwars.AnimationType.FISHING_ROD_PULLING
+                            lplr, bedwars.AnimationType.FISHING_ROD_PULLING
                         )
                     end)
-                    
-                    if success and track then
-                        pullAnimationTrack = track
-                    end
+                    if ok and track then pullAnimationTrack = track end
                 end)
             end
-            
+
             task.spawn(function()
                 if CompleteDelaySlider.Value > 0 then
                     task.wait(CompleteDelaySlider.Value)
                 end
-                
+
                 if pullAnimationTrack then
                     pcall(function() pullAnimationTrack:Stop() end)
                     pullAnimationTrack = nil
                 end
-                
+
                 if MinigameAnimationToggle.Enabled then
-                    local success, track = pcall(function()
+                    local ok, track = pcall(function()
                         return bedwars.GameAnimationUtil:playAnimation(
-                            lplr, 
-                            bedwars.AnimationType.FISHING_ROD_CATCH_SUCCESS
+                            lplr, bedwars.AnimationType.FISHING_ROD_CATCH_SUCCESS
                         )
                     end)
-                    
-                    if success and track then
-                        successAnimationTrack = track
-                    end
+                    if ok and track then successAnimationTrack = track end
                 end
-                
+
                 if result then
-                    local success, err = pcall(function()
-                        result({win = true})
-                    end)
-                    
-                    if not success then
-                        warn("[Fisherman] Failed to complete minigame:", err)
-                    end
+                    pcall(function() result({ win = true }) end)
                 end
-                
+
                 task.wait(0.5)
+
                 if successAnimationTrack then
                     pcall(function() successAnimationTrack:Stop() end)
                     successAnimationTrack = nil
                 end
-                
+
                 autoMinigameActive = false
             end)
         end
-        
+
         Fisherman:Clean(function()
             bedwars.FishingMinigameController.startMinigame = old
             stopAllAnimations()
         end)
     end
-    
-    local function setupESP()
-        if roactHooked then
-            debugLog("Roact already hooked, skipping")
-            return
-        end
-        
-        task.spawn(function()
-            task.wait(1)
-            
-            local success = pcall(function()
-                local Roact = require(
-                    ReplicatedStorage:WaitForChild("rbxts_include")
-                    :WaitForChild("node_modules")
-                    :WaitForChild("@rbxts")
-                    :WaitForChild("roact")
-                    :WaitForChild("src")
-                )
-                
-                if originalCreateElement == nil then
-                    originalCreateElement = Roact.createElement
-                end
-                
-                Roact.createElement = function(component, props, ...)
-                    local result = originalCreateElement(component, props, ...)
-                    
-                    if moduleEnabled and props and props.fishType then
-                        local fishType = props.fishType
-                        
-                        if props.decaySpeedMultiplier then
-                            table.insert(notificationQueue, fishType)
-                        end
-                    end
-                    
-                    return result
-                end
-                
-                roactHooked = true
-                debugLog("Roact successfully hooked")
-            end)
-            
-            if not success then
-                safeNotif('Fisherman ESP', 'Failed to hook ESP, try rejoining', 5)
-                if ESPToggle then 
-                    task.wait(0.5)
-                    ESPToggle:Toggle() 
-                end
-            end
-        end)
-    end
-    
-    local function cleanupESP()
-        if originalCreateElement and roactHooked then
-            pcall(function()
-                local Roact = require(
-                    ReplicatedStorage:WaitForChild("rbxts_include")
-                    :WaitForChild("node_modules")
-                    :WaitForChild("@rbxts")
-                    :WaitForChild("roact")
-                    :WaitForChild("src")
-                )
-                Roact.createElement = originalCreateElement
-                originalCreateElement = nil
-                roactHooked = false
-                debugLog("Roact unhooked")
-            end)
-        end
-        
-        notificationQueue = {}
-    end
-    
+
     local function setupFishermanSpy()
         if not bedwars or not bedwars.Client then
-            warn("[Fisherman] bedwars.Client not found!")
+            warn("[AutoFisher] bedwars.Client not found")
             return
         end
-        
+
         bedwars.Client:WaitFor(remotes.FishCaught):andThen(function(rbx)
             Fisherman:Clean(rbx:Connect(function(tbl)
-                local char = tbl.catchingPlayer.Character
-                local fish = tbl.dropData.fishModel
+                local char = tbl.catchingPlayer and tbl.catchingPlayer.Character
+                if not char then return end
+
+                local fish    = tbl.dropData and tbl.dropData.fishModel
                 local plrName = char.Name
-                local str = plrName:sub(1, 1):upper()..plrName:sub(2) or 'NIL'
-                local strfish = fishNames[tostring(fish)] or 'NIL Fish'
+                local str     = plrName:sub(1,1):upper() .. plrName:sub(2)
+                local strfish = fishNames[tostring(fish)] or "Unknown Fish"
+
                 if IgnoreTeammatesToggle.Enabled then
-                    local currentTeam = lplr.Team
-                    local currentplr = Players:GetPlayerFromCharacter(char)
-                    if currentplr and currentplr.Team == currentTeam then
-                    else
-                        notif("Fisherman Spy", str .. " has caught a " .. strfish, 8)
-                    end
-                else
-                    notif("Fisherman Spy", str .. " has caught a " .. strfish, 8)
+                    local currentPlr = Players:GetPlayerFromCharacter(char)
+                    if currentPlr and currentPlr.Team == lplr.Team then return end
                 end
+
+                safeNotif("Fisherman Spy", str .. " caught a " .. strfish, 8)
             end))
         end)
     end
-    
+
     Fisherman = vape.Categories.Kits:CreateModule({
-        Name = 'AutoFisher',
+        Name    = "AutoFisher",
+        Tooltip = "Auto minigame, loot ESP, blacklist, and spy for the Fisherman kit",
         Function = function(callback)
             if callback then
-                debugLog("module enabled")
-                
-                if AutoMinigameToggle.Enabled then
-                    setupAutoMinigame()
-                end
-                
-                if ESPToggle.Enabled then
-                    moduleEnabled = true
-                    setupESP()
-                end
-                
-                if FishermanSpyToggle.Enabled then
-                    setupFishermanSpy()
-                end
-                
-                task.spawn(function()
-                    while Fisherman.Enabled do
-                        processNotificationQueue()
-                        task.wait(0.1)
-                    end
-                end)
-                
+                if ESPToggle.Enabled           then setupESP()          end
+                if AutoMinigameToggle.Enabled  then setupAutoMinigame() end
+                if FishermanSpyToggle.Enabled  then setupFishermanSpy() end
             else
-                debugLog("module disabled")
-                
-                moduleEnabled = false
                 autoMinigameActive = false
-                
                 stopAllAnimations()
                 cleanupESP()
-                
-                Folder:ClearAllChildren()
-            end
-        end,
-        Tooltip = 'All-in-one Fisherman module with auto minigame, ESP, and spy'
-    })
-    
-    AutoMinigameToggle = Fisherman:CreateToggle({
-        Name = 'Auto Minigame',
-        Default = false,
-        Tooltip = 'Automatically complete fishing minigame',
-        Function = function(callback)
-            if CompleteDelaySlider and CompleteDelaySlider.Object then 
-                CompleteDelaySlider.Object.Visible = callback 
-            end
-            if PullAnimationToggle and PullAnimationToggle.Object then 
-                PullAnimationToggle.Object.Visible = callback 
-            end
-            if MinigameAnimationToggle and MinigameAnimationToggle.Object then 
-                MinigameAnimationToggle.Object.Visible = callback 
-            end
-            
-            if Fisherman.Enabled and callback then
-                setupAutoMinigame()
+                notifQueue = {} 
             end
         end
     })
-    
+
+    AutoMinigameToggle = Fisherman:CreateToggle({
+        Name    = "Auto Minigame",
+        Default = false,
+        Tooltip = "Automatically complete the fishing minigame",
+        Function = function(cv)
+            if CompleteDelaySlider     and CompleteDelaySlider.Object     then CompleteDelaySlider.Object.Visible     = cv end
+            if PullAnimationToggle     and PullAnimationToggle.Object     then PullAnimationToggle.Object.Visible     = cv end
+            if MinigameAnimationToggle and MinigameAnimationToggle.Object then MinigameAnimationToggle.Object.Visible = cv end
+            if Fisherman.Enabled and cv then setupAutoMinigame() end
+        end
+    })
+
     CompleteDelaySlider = Fisherman:CreateSlider({
-        Name = 'Complete Delay',
-        Min = 0,
-        Max = 5,
+        Name    = "Complete Delay",
+        Min     = 0,
+        Max     = 5,
         Default = 1,
         Decimal = 10,
-        Suffix = 's',
+        Suffix  = "s",
         Visible = false,
-        Tooltip = 'Delay before completing minigame (looks more legit)'
+        Tooltip = "Delay before auto-completing (looks more legit)"
     })
-    
+
     PullAnimationToggle = Fisherman:CreateToggle({
-        Name = 'Pull Animation',
+        Name    = "Pull Animation",
         Default = true,
         Visible = false,
-        Tooltip = 'Play pulling animation during delay (only if delay > 0)'
+        Tooltip = "Play rod-pulling animation during delay (requires delay > 0)"
     })
-    
+
     MinigameAnimationToggle = Fisherman:CreateToggle({
-        Name = 'Success Animation',
+        Name    = "Success Animation",
         Default = true,
         Visible = false,
-        Tooltip = 'Play success animation on complete'
+        Tooltip = "Play catch-success animation on completion"
     })
-    
-    FishermanSpyToggle = Fisherman:CreateToggle({
-        Name = 'Fisherman Spy',
+
+    BlacklistOption = Fisherman:CreateToggle({
+        Name    = "Blacklist",
         Default = false,
-        Tooltip = 'Get notified when other players catch fish',
-        Function = function(callback)
-            if IgnoreTeammatesToggle and IgnoreTeammatesToggle.Object then 
-                IgnoreTeammatesToggle.Object.Visible = callback 
-            end
-            
-            if Fisherman.Enabled and callback then
-                setupFishermanSpy()
-            end
+        Tooltip = "Auto-jump and skip auto-complete for blacklisted fish",
+        Function = function(cv)
+            if Blacklist and Blacklist.Object then Blacklist.Object.Visible = cv end
         end
     })
-    
-    IgnoreTeammatesToggle = Fisherman:CreateToggle({
-        Name = 'Ignore Teammates',
-        Default = true,
-        Visible = false,
-        Tooltip = 'Don\'t show notifications for teammates'
+
+    Blacklist = Fisherman:CreateTextList({
+        Name    = "Blacklist Fish",
+        Default = { "fish_iron" }
     })
-    
+
     ESPToggle = Fisherman:CreateToggle({
-        Name = 'Fish ESP',
+        Name    = "Fisherman ESP",
         Default = false,
-        Tooltip = 'Shows what fish you are catching',
-        Function = function(callback)
-            if ESPNotifyToggle and ESPNotifyToggle.Object then 
-                ESPNotifyToggle.Object.Visible = callback 
-            end
-            
+        Tooltip = "Shows what fish you are catching and what loot you will receive",
+        Function = function(cv)
+            if ESPNotifyToggle and ESPNotifyToggle.Object then ESPNotifyToggle.Object.Visible = cv end
             if Fisherman.Enabled then
-                moduleEnabled = callback
-                
-                if callback then
-                    setupESP()
-                else
-                    cleanupESP()
-                end
+                if cv then setupESP() else cleanupESP() end
             end
         end
     })
-    
+
     ESPNotifyToggle = Fisherman:CreateToggle({
-        Name = 'Notify Fish Type',
+        Name    = "Notify Loot",
         Default = true,
         Visible = false,
-        Tooltip = 'Get notifications of fish type'
+        Tooltip = "Show a notification with the fish name and loot details"
     })
-    
+
+    FishermanSpyToggle = Fisherman:CreateToggle({
+        Name    = "Fish Spy",
+        Default = false,
+        Tooltip = "Get notified when other players catch fish",
+        Function = function(cv)
+            if IgnoreTeammatesToggle and IgnoreTeammatesToggle.Object then IgnoreTeammatesToggle.Object.Visible = cv end
+            if Fisherman.Enabled and cv then setupFishermanSpy() end
+        end
+    })
+
+    IgnoreTeammatesToggle = Fisherman:CreateToggle({
+        Name    = "Ignore Teammates",
+        Default = true,
+        Visible = false,
+        Tooltip = "Don't notify for teammates catching fish"
+    })
 end)
 
 run(function()
@@ -31991,103 +31955,51 @@ end)
 run(function()
     local GodMode = {Enabled = false}
     local Range = 16
-    local LowHPOnly = false
-    local HPThreshold = 50
-    local Delay = 1
-    
+    local TimeUp = 0.2    
+    local TimeDown = 0.05
+
     local lastDodgeTime = 0
 
     GodMode = vape.Categories.Blatant:CreateModule({
         Name = "GodMode",
-        Function = function(call) 
+        Function = function(call)
             if call then
-                GodMode:Clean(workspace.DescendantAdded:Connect(function(arrow)
-                    if not GodMode.Enabled then return end
-                    if not entitylib.isAlive then return end
-
-                    if (arrow.Name == "crossbow_arrow" or arrow.Name == "arrow" or arrow.Name == "headhunter_arrow") and arrow:IsA("Model") then
-                        if arrow:GetAttribute("ProjectileShooter") == lplr.UserId then return end
-
-                        local root = arrow:FindFirstChildWhichIsA("BasePart")
-                        if not root then return end
-
-                        task.spawn(function()
-                            while GodMode.Enabled and root and root.Parent and entitylib.isAlive do
-                                local char = lplr.Character
-                                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                                if not hrp then break end
-
-                                local dist = (hrp.Position - root.Position).Magnitude
-                                if dist <= Range.Value then
-                                    local currentTime = tick()
-                                    if (currentTime - lastDodgeTime) >= Delay.Value then
-                                        local orgPos = hrp.Position
-                                        
-                                        hrp.CFrame = CFrame.new(orgPos + Vector3.new(0, -230, 0))
-                                        task.wait(0.2)
-                                        
-                                        if GodMode.Enabled and lplr.Character and lplr.Character:FindFirstChild("HumanoidRootPart") then
-                                            lplr.Character.HumanoidRootPart.CFrame = CFrame.new(orgPos)
-                                        end
-                                        
-                                        lastDodgeTime = tick()
-                                        break
-                                    end
-                                end
-
-                                task.wait(0.05)
-                            end
-                        end)
-                    end
-                end))
-                
                 task.spawn(function()
                     while GodMode.Enabled do
                         local root = lplr.Character and lplr.Character:FindFirstChild("HumanoidRootPart")
-                        local humanoid = lplr.Character and lplr.Character:FindFirstChild("Humanoid")
-                        
-                        if root and humanoid then
-                            local shouldDodge = true
-                            if LowHPOnly.Enabled then
-                                shouldDodge = humanoid.Health <= HPThreshold.Value
-                            end
-                            
-                            local currentTime = tick()
-                            if shouldDodge and (currentTime - lastDodgeTime) >= Delay.Value then
-                                local orgPos = root.Position
-                                local foundEnemy = false
+                        if root then
+                            local orgPos = root.Position
+                            local foundEnemy = false
 
-                                for _, v in next, playersService:GetPlayers() do
-                                    if v ~= lplr and v.Team ~= lplr.Team then
-                                        local enemyChar = v.Character
-                                        local enemyRoot = enemyChar and enemyChar:FindFirstChild("HumanoidRootPart")
-                                        local enemyHum = enemyChar and enemyChar:FindFirstChild("Humanoid")
-                                        if enemyRoot and enemyHum and enemyHum.Health > 0 then
-                                            local dist = (root.Position - enemyRoot.Position).Magnitude
-                                            if dist <= Range.Value then
-                                                foundEnemy = true
-                                                break
-                                            end
+                            for _, v in next, playersService:GetPlayers() do
+                                if v ~= lplr and v.Team ~= lplr.Team then
+                                    local enemyChar = v.Character
+                                    local enemyRoot = enemyChar and enemyChar:FindFirstChild("HumanoidRootPart")
+                                    local enemyHum = enemyChar and enemyChar:FindFirstChild("Humanoid")
+                                    if enemyRoot and enemyHum and enemyHum.Health > 0 then
+                                        local dist = (root.Position - enemyRoot.Position).Magnitude
+                                        if dist <= Range.Value then
+                                            foundEnemy = true
+                                            break
                                         end
                                     end
                                 end
+                            end
 
-                                if foundEnemy then
-                                    root.CFrame = CFrame.new(orgPos + Vector3.new(0, -230, 0))
-                                    task.wait(0.2)
-                                    if GodMode.Enabled and lplr.Character and lplr.Character:FindFirstChild("HumanoidRootPart") then
-                                        lplr.Character.HumanoidRootPart.CFrame = CFrame.new(orgPos)
-                                    end
-                                    lastDodgeTime = tick()
+                            if foundEnemy then
+                                root.CFrame = CFrame.new(orgPos + Vector3.new(0, -230, 0))
+                                task.wait(TimeUp.Value)   
+                                if GodMode.Enabled and lplr.Character and lplr.Character:FindFirstChild("HumanoidRootPart") then
+                                    lplr.Character.HumanoidRootPart.CFrame = CFrame.new(orgPos)
                                 end
                             end
                         end
-                        task.wait(0.2)
+                        task.wait(TimeDown.Value) 
                     end
                 end)
             end
         end,
-        Tooltip = "Prevents you from dying (dodges players and projectiles)"
+        Tooltip = "Teleports you away when enemies get too close"
     })
 
     Range = GodMode:CreateSlider({
@@ -32097,33 +32009,25 @@ run(function()
         Default = 15,
         Function = function(val) Range.Value = val end
     })
-    
-    LowHPOnly = GodMode:CreateToggle({
-        Name = "Low HP Only",
-        Default = false,
-        Function = function(val) 
-            LowHPOnly.Enabled = val 
-            HPThreshold.Object.Visible = val
-        end
-    })
-    
-    HPThreshold = GodMode:CreateSlider({
-        Name = "HP Threshold",
-        Min = 10,
-        Max = 100,
-        Default = 50,
-        Function = function(val) HPThreshold.Value = val end
-    })
-    HPThreshold.Object.Visible = false
-    
-    Delay = GodMode:CreateSlider({
-        Name = "Delay",
+
+    TimeUp = GodMode:CreateSlider({
+        Name = "Time Up",
         Min = 0,
-        Max = 10,
-        Default = 1,
+        Max = 1,
+        Default = 0.2,
         Decimal = 10,
         Suffix = "s",
-        Function = function(val) Delay.Value = val end
+        Function = function(val) TimeUp.Value = val end
+    })
+
+    TimeDown = GodMode:CreateSlider({
+        Name = "Time Down",
+        Min = 0,
+        Max = 1,
+        Default = 0.05,
+        Decimal = 100,
+        Suffix = "s",
+        Function = function(val) TimeDown.Value = val end
     })
 end)
 
@@ -37336,15 +37240,11 @@ end)
 run(function()
     local AutoAdetunde
     local AdetundeRemote
-
-    local ShieldTargetSlider
-    local SpeedTargetSlider
-    local StrengthTargetSlider
-    local DelaySlider
-    local CycleToggle
     local OrderDropdown
-    local StatusLabel
-
+    local ShieldSlider
+    local SpeedSlider
+    local StrengthSlider
+    local DelaySlider
     local currentThread = nil
 
     local function getRemote()
@@ -37422,15 +37322,7 @@ run(function()
         ["Speed → Strength → Shield"] = {"Speed", "Strength", "Shield"},
         ["Strength → Shield → Speed"] = {"Strength", "Shield", "Speed"},
         ["Strength → Speed → Shield"] = {"Strength", "Speed", "Shield"},
-        ["Round Robin"]               = {"Shield", "Speed", "Strength"},
     }
-
-    local function getTargetForUpgrade(name)
-        if name == "Shield"   then return ShieldTargetSlider   and ShieldTargetSlider.Value   or 3 end
-        if name == "Speed"    then return SpeedTargetSlider     and SpeedTargetSlider.Value     or 3 end
-        if name == "Strength" then return StrengthTargetSlider and StrengthTargetSlider.Value or 3 end
-        return 3
-    end
 
     local function runUpgradeLoop()
         if not hasFrostyHammer() then
@@ -37440,11 +37332,15 @@ run(function()
         end
 
         local orderKey = OrderDropdown and OrderDropdown.Value or "Shield → Speed → Strength"
-        local isRoundRobin = orderKey == "Round Robin"
         local sequence = ORDER_SEQUENCES[orderKey] or {"Shield", "Speed", "Strength"}
 
+        local steps = {
+            Shield   = ShieldSlider   and ShieldSlider.Value   or 1,
+            Speed    = SpeedSlider    and SpeedSlider.Value    or 1,
+            Strength = StrengthSlider and StrengthSlider.Value or 1,
+        }
+
         local delay = DelaySlider and DelaySlider.Value or 0.15
-        local shouldCycle = CycleToggle and CycleToggle.Enabled
 
         local levels = getCurrentLevels()
         if not levels then
@@ -37453,55 +37349,60 @@ run(function()
             return
         end
 
+        local active = {}
+        for name, step in pairs(steps) do
+            if step > 0 then
+                table.insert(active, name)
+            end
+        end
+
+        if #active == 0 then
+            notif("AutoAdetunde", "All step counts are zero – nothing to upgrade!", 3)
+            if AutoAdetunde.Enabled then AutoAdetunde:Toggle() end
+            return
+        end
+
         repeat
-            local didAnything = false
+            for _, upgradeName in ipairs(sequence) do
+                if not AutoAdetunde.Enabled then break end
 
-            if isRoundRobin then
-                for _, upgradeName in ipairs(sequence) do
-                    if not AutoAdetunde.Enabled then break end
-                    local key = UPGRADE_MAP[upgradeName]
-                    local target = getTargetForUpgrade(upgradeName)
-                    local current = levels[key] or 0
-
-                    if current < target and current < 3 then
-                        local result = doUpgrade(key)
-                        if type(result) == "table" then
-                            levels.shield   = result.shield   or levels.shield
-                            levels.speed    = result.speed    or levels.speed
-                            levels.strength = result.strength or levels.strength
-                            didAnything = true
-                        end
-                        task.wait(delay)
-                    end
+                local stepCount = steps[upgradeName]
+                if stepCount == 0 then
+                    continue 
                 end
-            else
-                for _, upgradeName in ipairs(sequence) do
-                    if not AutoAdetunde.Enabled then break end
-                    local key = UPGRADE_MAP[upgradeName]
-                    local target = getTargetForUpgrade(upgradeName)
-                    local current = levels[key] or 0
 
-                    while AutoAdetunde.Enabled and current < target and current < 3 do
-                        local result = doUpgrade(key)
-                        if type(result) == "table" then
-                            levels.shield   = result.shield   or levels.shield
-                            levels.speed    = result.speed    or levels.speed
-                            levels.strength = result.strength or levels.strength
-                            current = levels[key] or current
-                            didAnything = true
-                        else
-                            break
-                        end
-                        task.wait(delay)
+                local key = UPGRADE_MAP[upgradeName]
+                local current = levels[key] or 0
+                local maxLevel = 3
+                local remaining = maxLevel - current
+
+                if remaining <= 0 then
+                    continue
+                end
+
+                local attempts = math.min(stepCount, remaining)
+
+                for _ = 1, attempts do
+                    if not AutoAdetunde.Enabled then break end
+
+                    local result = doUpgrade(key)
+                    if type(result) == "table" then
+                        levels.shield   = result.shield   or levels.shield
+                        levels.speed    = result.speed    or levels.speed
+                        levels.strength = result.strength or levels.strength
+                    else
+                        task.wait(0.5)
+                        break
                     end
+
+                    task.wait(delay)
                 end
             end
 
             local allDone = true
-            for _, upgradeName in ipairs(sequence) do
-                local key = UPGRADE_MAP[upgradeName]
-                local target = math.min(getTargetForUpgrade(upgradeName), 3)
-                if (levels[key] or 0) < target then
+            for _, name in ipairs(active) do
+                local key = UPGRADE_MAP[name]
+                if (levels[key] or 0) < 3 then
                     allDone = false
                     break
                 end
@@ -37511,15 +37412,12 @@ run(function()
                 local s = levels.shield or 0
                 local sp = levels.speed or 0
                 local st = levels.strength or 0
-                notif("AutoAdetunde", ("Done! Shield %d/3 | Speed %d/3 | Strength %d/3"):format(s, sp, st), 6)
-                if not shouldCycle then
-                    if AutoAdetunde.Enabled then AutoAdetunde:Toggle() end
-                    return
-                end
-                task.wait(1)
-            elseif not didAnything then
-                task.wait(0.5)
+                notif("AutoAdetunde", ("Done Shield %d/3 | Speed %d/3 | Strength %d/3"):format(s, sp, st), 6)
+                AutoAdetunde:Toggle()  
+                return
             end
+
+            task.wait(0.2)
 
         until not AutoAdetunde.Enabled
     end
@@ -37540,11 +37438,11 @@ run(function()
                 end
             end
         end,
-        Tooltip = 'Auto upgrades Frosty Hammer with full control'
+        Tooltip = 'Auto upgrades Frosty Hammer with simple priority & step control'
     })
 
     OrderDropdown = AutoAdetunde:CreateDropdown({
-        Name = 'Upgrade Order',
+        Name = 'Priority Order',
         List = {
             "Shield → Speed → Strength",
             "Shield → Strength → Speed",
@@ -37552,38 +37450,37 @@ run(function()
             "Speed → Strength → Shield",
             "Strength → Shield → Speed",
             "Strength → Speed → Shield",
-            "Round Robin",
         },
         Default = "Shield → Speed → Strength",
-        Tooltip = 'Order to upgrade in. Round Robin does 1 of each at a time.',
+        Tooltip = 'The order in which upgrades are attempted each cycle',
         Function = function() end
     })
 
-    ShieldTargetSlider = AutoAdetunde:CreateSlider({
-        Name = 'Shield Target',
+    ShieldSlider = AutoAdetunde:CreateSlider({
+        Name = 'Shield Steps per Cycle',
         Min = 0,
         Max = 3,
-        Default = 3,
+        Default = 1,
         Suffix = '/3',
-        Tooltip = '0 = skip Shield entirely, 1-3 = upgrade to that level'
+        Tooltip = '0 = skip Shield entirely, 1-3 = upgrade that many times per cycle'
     })
 
-    SpeedTargetSlider = AutoAdetunde:CreateSlider({
-        Name = 'Speed Target',
+    SpeedSlider = AutoAdetunde:CreateSlider({
+        Name = 'Speed Steps per Cycle',
         Min = 0,
         Max = 3,
-        Default = 3,
+        Default = 1,
         Suffix = '/3',
-        Tooltip = '0 = skip Speed entirely, 1-3 = upgrade to that level'
+        Tooltip = '0 = skip Speed entirely, 1-3 = upgrade that many times per cycle'
     })
 
-    StrengthTargetSlider = AutoAdetunde:CreateSlider({
-        Name = 'Strength Target',
+    StrengthSlider = AutoAdetunde:CreateSlider({
+        Name = 'Strength Steps per Cycle',
         Min = 0,
         Max = 3,
-        Default = 3,
+        Default = 1,
         Suffix = '/3',
-        Tooltip = '0 = skip Strength entirely, 1-3 = upgrade to that level'
+        Tooltip = '0 = skip Strength entirely, 1-3 = upgrade that many times per cycle'
     })
 
     DelaySlider = AutoAdetunde:CreateSlider({
@@ -37593,13 +37490,7 @@ run(function()
         Default = 0.15,
         Decimal = 100,
         Suffix = 's',
-        Tooltip = 'Delay between each upgrade call. Lower = faster but more suspicious'
-    })
-
-    CycleToggle = AutoAdetunde:CreateToggle({
-        Name = 'Keep Cycling',
-        Default = false,
-        Tooltip = 'After hitting all targets, loop back and keep trying (useful mid-game when you get more diamonds)'
+        Tooltip = 'Delay between each upgrade call'
     })
 end)
 
@@ -37728,5 +37619,294 @@ run(function()
 		end,
 		Tooltip = 'Replaces all block textures with the croc texture on all sides'
 	})
+end)
+
+run(function()
+    local AutoPyro
+    local PyroRemote
+    local OrderDropdown
+    local RangeSlider
+    local HeatSlider
+    local PowerSlider
+    local DelaySlider
+    local currentThread = nil
+    local ItemType = {
+        FLAMETHROWER = "flamethrower"
+    }
+
+    local function getRemote()
+        if PyroRemote then return PyroRemote end
+        local ok, result = pcall(function()
+            return bedwars.Client:Get(remotes.UpgradeFlamethrower).instance
+        end)
+        if ok and result then
+            PyroRemote = result
+            return PyroRemote
+        end
+        local ok2, result2 = pcall(function()
+            return game:GetService("ReplicatedStorage")
+                :WaitForChild("rbxts_include")
+                :WaitForChild("node_modules")
+                :WaitForChild("@rbxts")
+                :WaitForChild("net")
+                :WaitForChild("out")
+                :WaitForChild("_NetManaged")
+                :WaitForChild("UpgradeFlamethrower")
+        end)
+        if ok2 and result2 then
+            PyroRemote = result2
+            return PyroRemote
+        end
+        return nil
+    end
+
+    local function hasFlamethrower()
+        if store and store.inventory and store.inventory.inventory then
+            local ok, inv = pcall(function()
+                return store.inventory.inventory.items
+            end)
+            if ok and inv then
+                for _, item in pairs(inv) do
+                    if item and item.itemType == ItemType.FLAMETHROWER then
+                        return true
+                    end
+                end
+            end
+        end
+        local success, InventoryUtil = pcall(require, game:GetService("ReplicatedStorage"):WaitForChild("TS"):WaitForChild("inventory"):WaitForChild("inventory-util"))
+        if success and InventoryUtil and InventoryUtil.getToolFromInventory then
+            local Players = game:GetService("Players")
+            local tool = InventoryUtil.getToolFromInventory(Players.LocalPlayer, ItemType.FLAMETHROWER)
+            return tool ~= nil
+        end
+        return false
+    end
+
+    local function getCurrentLevels()
+        if store and store.inventory and store.inventory.inventory then
+            local ok, inv = pcall(function()
+                return store.inventory.inventory.items
+            end)
+            if ok and inv then
+                for _, item in pairs(inv) do
+                    if item and item.itemType == ItemType.FLAMETHROWER and item.tool then
+                        local tool = item.tool
+                        return {
+                            range   = tool:GetAttribute("range")   or 0,
+                            heat    = tool:GetAttribute("heat")    or 0,
+                            power   = tool:GetAttribute("power")   or 0,
+                        }
+                    end
+                end
+            end
+        end
+        local success, InventoryUtil = pcall(require, game:GetService("ReplicatedStorage"):WaitForChild("TS"):WaitForChild("inventory"):WaitForChild("inventory-util"))
+        if success and InventoryUtil and InventoryUtil.getToolFromInventory then
+            local Players = game:GetService("Players")
+            local tool = InventoryUtil.getToolFromInventory(Players.LocalPlayer, ItemType.FLAMETHROWER)
+            if tool then
+                return {
+                    range   = tool:GetAttribute("range")   or 0,
+                    heat    = tool:GetAttribute("heat")    or 0,
+                    power   = tool:GetAttribute("power")   or 0,
+                }
+            end
+        end
+        return nil
+    end
+
+    local function doUpgrade(upgradeType)
+        local remote = getRemote()
+        if not remote then return nil end
+        local ok, result = pcall(function()
+            return remote:InvokeServer(upgradeType)
+        end)
+        if ok and type(result) == "table" then
+            return result  
+        end
+        return nil
+    end
+
+    local UPGRADE_MAP = {
+        Range  = "range",
+        Heat   = "heat",
+        Power  = "power",
+    }
+
+    local ORDER_SEQUENCES = {
+        ["Range → Heat → Power"]    = {"Range", "Heat", "Power"},
+        ["Range → Power → Heat"]    = {"Range", "Power", "Heat"},
+        ["Heat → Range → Power"]    = {"Heat", "Range", "Power"},
+        ["Heat → Power → Range"]    = {"Heat", "Power", "Range"},
+        ["Power → Range → Heat"]    = {"Power", "Range", "Heat"},
+        ["Power → Heat → Range"]    = {"Power", "Heat", "Range"},
+    }
+
+    local function runUpgradeLoop()
+        if not hasFlamethrower() then
+            notif("AutoPyro", "No Flamethrower in inventory!", 3)
+            if AutoPyro.Enabled then AutoPyro:Toggle() end
+            return
+        end
+
+        local orderKey = OrderDropdown and OrderDropdown.Value or "Range → Heat → Power"
+        local sequence = ORDER_SEQUENCES[orderKey] or {"Range", "Heat", "Power"}
+
+        local steps = {
+            Range  = RangeSlider  and RangeSlider.Value  or 1,
+            Heat   = HeatSlider   and HeatSlider.Value   or 1,
+            Power  = PowerSlider  and PowerSlider.Value  or 1,
+        }
+
+        local delay = DelaySlider and DelaySlider.Value or 0.15
+
+        local levels = getCurrentLevels()
+        if not levels then
+            notif("AutoPyro", "Failed to read upgrade levels!", 3)
+            if AutoPyro.Enabled then AutoPyro:Toggle() end
+            return
+        end
+
+        local active = {}
+        for name, step in pairs(steps) do
+            if step > 0 then
+                table.insert(active, name)
+            end
+        end
+
+        if #active == 0 then
+            notif("AutoPyro", "All step counts are zero – nothing to upgrade!", 3)
+            if AutoPyro.Enabled then AutoPyro:Toggle() end
+            return
+        end
+
+        repeat
+            for _, upgradeName in ipairs(sequence) do
+                if not AutoPyro.Enabled then break end
+
+                local stepCount = steps[upgradeName]
+                if stepCount == 0 then
+                    continue 
+                end
+
+                local key = UPGRADE_MAP[upgradeName]
+                local current = levels[key] or 0
+                local maxLevel = 3
+                local remaining = maxLevel - current
+
+                if remaining <= 0 then
+                    continue
+                end
+
+                local attempts = math.min(stepCount, remaining)
+
+                for _ = 1, attempts do
+                    if not AutoPyro.Enabled then break end
+
+                    local result = doUpgrade(key)
+                    if type(result) == "table" then
+                        levels.range = result.range or levels.range
+                        levels.heat  = result.heat  or levels.heat
+                        levels.power = result.power or levels.power
+                    else
+                        task.wait(0.5)
+                        break
+                    end
+
+                    task.wait(delay)
+                end
+            end
+
+            local allDone = true
+            for _, name in ipairs(active) do
+                local key = UPGRADE_MAP[name]
+                if (levels[key] or 0) < 3 then
+                    allDone = false
+                    break
+                end
+            end
+
+            if allDone then
+                local r = levels.range or 0
+                local h = levels.heat  or 0
+                local p = levels.power or 0
+                notif("AutoPyro", ("Done Range %d/3 | Heat %d/3 | Power %d/3"):format(r, h, p), 6)
+                AutoPyro:Toggle()  
+                return
+            end
+
+        until not AutoPyro.Enabled
+    end
+
+    AutoPyro = vape.Categories.Kits:CreateModule({
+        Name = 'AutoPyro',
+        Function = function(callback)
+            if callback then
+                if currentThread then
+                    task.cancel(currentThread)
+                    currentThread = nil
+                end
+                currentThread = task.spawn(runUpgradeLoop)
+            else
+                if currentThread then
+                    task.cancel(currentThread)
+                    currentThread = nil
+                end
+            end
+        end,
+        Tooltip = 'Auto upgrades Flamethrower with simple priority & step control'
+    })
+
+    OrderDropdown = AutoPyro:CreateDropdown({
+        Name = 'Priority Order',
+        List = {
+            "Range → Heat → Power",
+            "Range → Power → Heat",
+            "Heat → Range → Power",
+            "Heat → Power → Range",
+            "Power → Range → Heat",
+            "Power → Heat → Range",
+        },
+        Default = "Range → Heat → Power",
+        Tooltip = 'The order in which upgrades are attempted each cycle',
+        Function = function() end
+    })
+
+    RangeSlider = AutoPyro:CreateSlider({
+        Name = 'Range Steps per Cycle',
+        Min = 0,
+        Max = 3,
+        Default = 1,
+        Suffix = '/3',
+        Tooltip = '0 = skip Range entirely, 1-3 = upgrade that many times per cycle'
+    })
+
+    HeatSlider = AutoPyro:CreateSlider({
+        Name = 'Heat Steps per Cycle',
+        Min = 0,
+        Max = 3,
+        Default = 1,
+        Suffix = '/3',
+        Tooltip = '0 = skip Heat entirely, 1-3 = upgrade that many times per cycle'
+    })
+
+    PowerSlider = AutoPyro:CreateSlider({
+        Name = 'Power Steps per Cycle',
+        Min = 0,
+        Max = 3,
+        Default = 1,
+        Suffix = '/3',
+        Tooltip = '0 = skip Power entirely, 1-3 = upgrade that many times per cycle'
+    })
+
+    DelaySlider = AutoPyro:CreateSlider({
+        Name = 'Upgrade Delay',
+        Min = 0.05,
+        Max = 2,
+        Default = 0.15,
+        Decimal = 100,
+        Suffix = 's',
+        Tooltip = 'Delay between each upgrade call'
+    })
 end)
 
