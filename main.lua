@@ -9,8 +9,9 @@ if type(args) == "table" and args.Username then
 end
 
 local vape
+local real_loadstring = loadstring
 local loadstring = function(...)
-    local res, err = loadstring(...)
+    local res, err = real_loadstring(...)
     if err and vape then
         vape:CreateNotification('vape', 'failed to load: ' .. err, 30, 'alert')
     end
