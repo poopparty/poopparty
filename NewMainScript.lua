@@ -1,4 +1,3 @@
-print("newmain passed")
 local EXPECTED_REPO_OWNER = "poopparty"
 local EXPECTED_REPO_NAME = "poopparty"
 local ACCOUNT_SYSTEM_URL = "https://raw.githubusercontent.com/poopparty/whitelistcheck/main/AccountSystem.lua"
@@ -145,17 +144,12 @@ for _, folder in {'newvape', 'newvape/games', 'newvape/profiles', 'newvape/profi
 end
 
 if not shared.VapeDeveloper then
-    local commit = 'main'
-    local ok, subbed = pcall(function()
+    local _, subbed = pcall(function()
         return game:HttpGet('https://github.com/'..EXPECTED_REPO_OWNER..'/'..EXPECTED_REPO_NAME)
     end)
-    if ok and subbed then
-        local pos = subbed:find('currentOid')
-        local c = pos and subbed:sub(pos + 13, pos + 52) or nil
-        if c and #c == 40 then
-            commit = c
-        end
-    end
+    local commit = subbed:find('currentOid')
+    commit = commit and subbed:sub(commit + 13, commit + 52) or nil
+    commit = commit and #commit == 40 and commit or 'main'
     if commit == 'main' or (isfile('newvape/profiles/commit.txt') and readfile('newvape/profiles/commit.txt') or '') ~= commit then
         wipeFolder('newvape')
         wipeFolder('newvape/games')
@@ -167,4 +161,3 @@ if not shared.VapeDeveloper then
 end
 
 return loadstring(downloadFile('newvape/main.lua'), 'main')(passedArgs)
-print("newmain passed")
