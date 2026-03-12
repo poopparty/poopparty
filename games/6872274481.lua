@@ -579,10 +579,6 @@ run(function()
 
 	entitylib.addEntity = function(char, plr, teamfunc)
 		if not char then return end
-		if entitylib.EntityThreads[char] then
-			task.cancel(entitylib.EntityThreads[char])
-			entitylib.EntityThreads[char] = nil
-		end
 		entitylib.EntityThreads[char] = task.spawn(function()
 			local hum, humrootpart, head
 			if plr then
@@ -1289,6 +1285,11 @@ run(function()
 			knockbackId = select(7, ...),
 			disableDamageHighlight = select(13, ...)
 		})
+
+		local playerRemoveConn = playersService.PlayerRemoving:Connect(function(plr)
+			store.inventories[plr] = nil
+		end)
+		vape:Clean(playerRemoveConn)
 	end))
 
 	for _, event in {'PlaceBlockEvent', 'BreakBlockEvent'} do
