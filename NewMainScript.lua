@@ -36,6 +36,29 @@ end
 
 local function downloadPremadeProfiles(commit)
     local httpService = game:GetService('HttpService')
+    if not isfolder('newvape/profiles/premade') then makefolder('newvape/profiles/premade') end
+    local success, response = pcall(function()
+        return game:HttpGet('https://api.github.com/repos/'..EXPECTED_REPO_OWNER..'/'..EXPECTED_REPO_NAME..'/contents/profiles/premade?ref='..commit)
+    end)
+    if success and response then
+        local ok, files = pcall(function() return httpService:JSONDecode(response) end)
+        if ok and type(files) == 'table' then
+            for _, file in pairs(files) do
+                if file.name and file.name:find('.txt') and file.name ~= 'commit.txt' then
+                    local filePath = 'newvape/profiles/premade/'..file.name
+                    if not isfile(filePath) then
+                        local dl = file.download_url or ('https://raw.githubusercontent.com/'..EXPECTED_REPO_OWNER..'/'..EXPECTED_REPO_NAME..'/'..commit..'/profiles/premade/'..file.name)
+                        local ds, dc = pcall(function() return game:HttpGet(dl, true) end)
+                        if ds and dc and dc ~= '404: Not Found' then writefile(filePath, dc) end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function downloadPremadeProfiles(commit)
+    local httpService = game:GetService('HttpService')
     if not isfolder('newvape/profiles/premade') then
         makefolder('newvape/profiles/premade')
     end
@@ -87,6 +110,7 @@ if not shared.VapeDeveloper then
 		wipeFolder('newvape/guis')
 		wipeFolder('newvape/libraries')
 	end
+	downloadPremadeProfiles(commit)
 	writefile('newvape/profiles/commit.txt', commit)
 end
 
