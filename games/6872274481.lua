@@ -8454,7 +8454,6 @@ run(function()
 				end
 			else
 				bedwars.ProjectileController.calculateImportantLaunchValues = getgenv()._aerov4_original_calcLaunch or old
-				getgenv()._aerov4_original_calcLaunch = nil
 				if targetOutline then
 					pcall(function() targetOutline:Destroy() end)
 					targetOutline = nil
@@ -9202,8 +9201,10 @@ run(function()
         Name = 'AutoChargeBow',
         Function = function(callback)
             if callback then
-                local baseFunc = getgenv()._aerov4_original_calcLaunch or bedwars.ProjectileController.calculateImportantLaunchValues
-                old = bedwars.ProjectileController.calculateImportantLaunchValues
+				if not getgenv()._aerov4_original_calcLaunch then
+					getgenv()._aerov4_original_calcLaunch = bedwars.ProjectileController.calculateImportantLaunchValues
+				end
+				old = getgenv()._aerov4_original_calcLaunch
                 bedwars.ProjectileController.calculateImportantLaunchValues = function(...)
                     local result = old(...)
                     
@@ -9214,11 +9215,10 @@ run(function()
                     return result
                 end
             else
-                if old then
-                    local current = bedwars.ProjectileController.calculateImportantLaunchValues
-                    bedwars.ProjectileController.calculateImportantLaunchValues = old
-                    old = nil
-                end
+				if old then
+					bedwars.ProjectileController.calculateImportantLaunchValues = getgenv()._aerov4_original_calcLaunch or old
+					old = nil
+				end
             end
         end,
         Tooltip = 'Automatically charges your bow with controllable charge percentage'
@@ -12590,7 +12590,7 @@ run(function()
 				starCooldowns[v] = tick()
 
 				bedwars.GameAnimationUtil:playAnimation(lplr, bedwars.AnimationType.PUNCH)
-				bedwars.ViewmodelController:playAnimation(bedwars.AnimationType.FP_USE_ITEM)
+            	bedwars.ViewmodelController:playAnimation(bedwars.AnimationType.FP_USE_ITEM)
 				bedwars.StarCollectorController:collectEntity(lplr, v, v.Name)
 			end, r, false)
 		end,
@@ -13384,211 +13384,44 @@ end)
 run(function()
 	local AutoPlay
 	local Random
-	local BypassAFK
-	local queuedThisMatch = false
-	local afkRemote
-	local lastAFKBypass = 0
 	
 	local function isEveryoneDead()
-		if not bedwars or not bedwars.Store then return false end
-		
-		local success, state = pcall(function()
-			return bedwars.Store:getState()
-		end)
-		
-		if success and state and state.Party and state.Party.members then
-			return #state.Party.members <= 0
-		end
-		
-		return false
-	end
-	
-	local function canQueue()
-		if not bedwars or not bedwars.Store then return false end
-		
-		local success, state = pcall(function()
-			return bedwars.Store:getState()
-		end)
-		
-		if not success or not state then return false end
-		
-		return state.Game 
-			and not state.Game.customMatch 
-			and state.Party 
-			and state.Party.leader 
-			and state.Party.leader.userId == lplr.UserId 
-			and state.Party.queueState == 0
+		return #bedwars.Store:getState().Party.members <= 0
 	end
 	
 	local function joinQueue()
-		if not canQueue() or queuedThisMatch then return end
-		
-		if not bedwars or not bedwars.QueueController then 
-			return 
-		end
-		
-		local success = pcall(function()
+		if not bedwars.Store:getState().Game.customMatch and bedwars.Store:getState().Party.leader.userId == lplr.UserId and bedwars.Store:getState().Party.queueState == 0 then
 			if Random.Enabled then
 				local listofmodes = {}
-				if bedwars.QueueMeta then
-					for i, v in pairs(bedwars.QueueMeta) do
-						if type(v) == 'table' and not v.disabled and not v.voiceChatOnly and not v.rankCategory then 
-							table.insert(listofmodes, i) 
-						end
+				for i, v in bedwars.QueueMeta do
+					if not v.disabled and not v.voiceChatOnly and not v.rankCategory then 
+						table.insert(listofmodes, i) 
 					end
 				end
-				
-				if #listofmodes > 0 then
-					local selectedMode = listofmodes[math.random(1, #listofmodes)]
-					bedwars.QueueController:joinQueue(selectedMode)
-					notif('AutoPlay', 'Joined random queue: '..selectedMode, 3)
-				else
-					bedwars.QueueController:joinQueue('bedwars_test')
-					notif('AutoPlay', 'Joined bedwars_test queue', 3)
-				end
+				bedwars.QueueController:joinQueue(listofmodes[math.random(1, #listofmodes)])
 			else
-				local queueType = store.queueType or 'bedwars_test'
-				bedwars.QueueController:joinQueue(queueType)
-				notif('AutoPlay', 'Joined '..queueType..' queue', 3)
-			end
-			
-			queuedThisMatch = true
-		end)
-		
-		if not success then
-			queuedThisMatch = false
-		end
-	end
-	
-	local function findAFKRemote()
-		if afkRemote and afkRemote.Parent then return afkRemote end
-		
-		if not afkRemote then
-			local descendants = replicatedStorage:GetDescendants()
-			for _, v in ipairs(descendants) do
-				if v:IsA('RemoteEvent') and v.Name == 'AfkInfo' then
-					afkRemote = v
-					return afkRemote
-				end
+				bedwars.QueueController:joinQueue(store.queueType)
 			end
 		end
-		
-		return nil
-	end
-	
-	local function bypassAFK()
-		if not BypassAFK.Enabled then return end
-		
-		local currentTime = tick()
-		
-		if (currentTime - lastAFKBypass) < 25 then
-			return
-		end
-		lastAFKBypass = currentTime
-		
-		local remote = findAFKRemote()
-		if remote and remote.Parent then
-			pcall(function()
-				remote:FireServer({afk = false})
-			end)
-		else
-			pcall(function()
-				local cam = workspace.CurrentCamera
-				if cam then
-					cam.CFrame = cam.CFrame * CFrame.Angles(0, math.rad(0.001), 0)
-				end
-			end)
-		end
-	end
-	
-	local function checkInstantQueue()
-		if entitylib.isAlive then return false end
-		
-		local hasBed = false
-		if bedwars and bedwars.Store then
-			local success, state = pcall(function()
-				return bedwars.Store:getState()
-			end)
-			
-			if success and state and state.Bed and lplr.Team then
-				local teamName = lplr.Team.Name
-				if state.Bed[teamName] then
-					hasBed = true
-				end
-			end
-		end
-		
-		return not hasBed and isEveryoneDead()
 	end
 	
 	AutoPlay = vape.Categories.Utility:CreateModule({
 		Name = 'AutoPlay',
 		Function = function(callback)
 			if callback then
-				queuedThisMatch = false
-				lastAFKBypass = 0
-				afkRemote = nil 
-				
-				task.defer(findAFKRemote)
-				
-				task.spawn(function()
-					repeat
-						bypassAFK()
-						task.wait(30)
-					until not AutoPlay.Enabled
-				end)
-				
 				AutoPlay:Clean(vapeEvents.EntityDeathEvent.Event:Connect(function(deathTable)
-					if deathTable.entityInstance == lplr.Character then
-						task.wait(0.5)
-						
-						if not queuedThisMatch and checkInstantQueue() then
-							bypassAFK()
-							task.wait(0.2)
-							joinQueue()
-						end
-					end
-				end))
-				
-				AutoPlay:Clean(vapeEvents.MatchEndEvent.Event:Connect(function()
-					if not queuedThisMatch then
-						bypassAFK()
-						task.wait(0.5)
+					if deathTable.finalKill and deathTable.entityInstance == lplr.Character and isEveryoneDead() and store.matchState ~= 2 then
 						joinQueue()
 					end
-					
-					task.delay(3, function()
-						queuedThisMatch = false
-					end)
 				end))
-				
-				AutoPlay:Clean(bedwars.Store.changed:connect(function(state, oldState)
-					if state.Game and state.Game.matchState == 2 and 
-					   oldState.Game and oldState.Game.matchState ~= 2 then
-						if not queuedThisMatch then
-							task.wait(1)
-							bypassAFK()
-							task.wait(0.3)
-							joinQueue()
-						end
-					end
-				end))
-			else
-				afkRemote = nil
+				AutoPlay:Clean(vapeEvents.MatchEndEvent.Event:Connect(joinQueue))
 			end
 		end,
-		Tooltip = 'Automatically queues after match ends and bypasses AFK'
+		Tooltip = 'Automatically queues after the match ends.'
 	})
-	
 	Random = AutoPlay:CreateToggle({
 		Name = 'Random',
-		Tooltip = 'Chooses a random gamemode'
-	})
-	
-	BypassAFK = AutoPlay:CreateToggle({
-		Name = 'Bypass AFK',
-		Default = true,
-		Tooltip = 'Prevents AFK kick by sending fake activity'
+		Tooltip = 'Chooses a random mode'
 	})
 end)
 
@@ -23130,7 +22963,10 @@ run(function()
 		Name = 'AutoUma',
 		Function = function(callback)
 			if callback then
-				old = bedwars.ProjectileController.calculateImportantLaunchValues
+				if not getgenv()._aerov4_original_calcLaunch then
+					getgenv()._aerov4_original_calcLaunch = bedwars.ProjectileController.calculateImportantLaunchValues
+				end
+				old = getgenv()._aerov4_original_calcLaunch
 				bedwars.ProjectileController.calculateImportantLaunchValues = function(...)
 					hovering = true
 					local self, projmeta, worldmeta, origin, shootpos = ...
@@ -23235,7 +23071,8 @@ run(function()
 				end
 			else
 				if old then
-					bedwars.ProjectileController.calculateImportantLaunchValues = old
+					bedwars.ProjectileController.calculateImportantLaunchValues = getgenv()._aerov4_original_calcLaunch or old
+					old = nil
 				end
 				clearOutline()
 				stopAutoSummon()
@@ -25297,49 +25134,46 @@ run(function()
         bedwars.StarCollectorController:collectEntity(lplr, star, star.Name)
     end
 
-    local function startCollection()
-        collectionRunning = true
-        task.spawn(function()
-            while collectionRunning and StarCollector.Enabled and CollectionToggle.Enabled do
-                if not entitylib.isAlive then 
-                    task.wait(0.1) 
-                    continue 
-                end
-                
-                local localPosition = entitylib.character.RootPart.Position
-                local range = RangeSlider.Value
-                local starsFound = false
-                
-                for _, v in collectionService:GetTagged('stars') do
-                    if not collectionRunning or not StarCollector.Enabled or not CollectionToggle.Enabled then 
-                        break 
-                    end
-                    
-                    if v:IsA("Model") and v.PrimaryPart then
-                        local starPos = v.PrimaryPart.Position
-                        local distance = (localPosition - starPos).Magnitude
-                        
-                        if distance <= range then
-                            starsFound = true
-                            
-                            local lastAttempt = starCooldowns[v]
-                            if lastAttempt and tick() - lastAttempt < COOLDOWN_TIME then
-                                continue
-                            end
-                            starCooldowns[v] = tick()
-                            collectStar(v)
-                            task.wait(0.1)
-                        end
-                    end
-                end
-                
-                if not starsFound then
-                    task.wait(0.2)
-                end
-            end
-            collectionRunning = false
-        end)
-    end
+	local function startCollection()
+		collectionRunning = true
+		task.spawn(function()
+			while collectionRunning and StarCollector.Enabled and CollectionToggle.Enabled do
+				if not entitylib.isAlive then
+					task.wait(0.1)
+					continue
+				end
+
+				local localPosition = entitylib.character.RootPart.Position
+				local range = RangeSlider.Value
+				local collected = false
+
+				for _, v in collectionService:GetTagged('stars') do
+					if not collectionRunning or not StarCollector.Enabled or not CollectionToggle.Enabled then
+						break
+					end
+
+					if v:IsA("Model") and v.PrimaryPart then
+						local starPos = v.PrimaryPart.Position
+						local distance = (localPosition - starPos).Magnitude
+
+						if distance <= range then
+							local lastAttempt = starCooldowns[v]
+							if lastAttempt and tick() - lastAttempt < COOLDOWN_TIME then
+								continue
+							end
+							starCooldowns[v] = tick()
+							collectStar(v)
+							collected = true
+							break
+						end
+					end
+				end
+
+				task.wait(collected and 0.1 or 0.2)
+			end
+			collectionRunning = false
+		end)
+	end
 
     StarCollector = vape.Categories.Kits:CreateModule({
         Name = 'AutoStar',
@@ -25458,6 +25292,14 @@ run(function()
         Default = false,
         Tooltip = 'only show esp when holding a sword'
     })
+
+    task.defer(function()
+        local espOn = ESPToggle and ESPToggle.Enabled
+        if ESPNotify and ESPNotify.Object then ESPNotify.Object.Visible = espOn end
+        if ESPBackground and ESPBackground.Object then ESPBackground.Object.Visible = espOn end
+        if ESPColor and ESPColor.Object then ESPColor.Object.Visible = espOn end
+        if SwordCheck and SwordCheck.Object then SwordCheck.Object.Visible = espOn end
+    end)
 end)
 
 run(function()
