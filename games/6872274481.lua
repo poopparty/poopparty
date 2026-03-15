@@ -7487,69 +7487,54 @@ run(function()
     local NoFall
     local Mode
     local Chance
-    local DamageAccuracy
     local SpoofCap
+    local DamageAccuracy
     local AutoToggle
     local HealthThreshold
-    
+
     local rand = Random.new()
     local rayParams = RaycastParams.new()
-    
-    local VECTOR_DOWN = Vector3.new(0, -1000, 0)
+
     local BLOCKCAST_SIZE = Vector3.new(3, 3, 3)
     local activationCheck = 0
     local lastRNGValue = 100
-    
+
     rayParams.CollisionGroup = "Default"
-    
+
     local function canActivate()
         local now = tick()
         if now - activationCheck > 0.5 then
             activationCheck = now
             lastRNGValue = rand:NextNumber(0, 100)
         end
-        
-        if lastRNGValue > Chance.Value then
-            return false
-        end
-        
-        if not AutoToggle.Enabled then
-            return true
-        end
-        
+        if lastRNGValue > Chance.Value then return false end
+        if not AutoToggle.Enabled then return true end
         local humanoid = entitylib.character and entitylib.character.Humanoid
         if not humanoid then return false end
-        
         return humanoid.Health <= HealthThreshold.Value
     end
-    
+
     local function runDamageAccuracyMode()
         local tracked = 0
         local extraGravity = 0
-        
         NoFall:Clean(runService.PreSimulation:Connect(function(dt)
             if entitylib.isAlive then
                 local root = store.rootpart or entitylib.character.RootPart
                 local velocity = root.AssemblyLinearVelocity
-                
                 if velocity.Y < -85 then
                     rayParams.FilterDescendantsInstances = {lplr.Character, gameCamera}
                     rayParams.CollisionGroup = root.CollisionGroup
-
                     local rootSize = root.Size.Y / 2.5 + entitylib.character.HipHeight
                     local checkDistance = Vector3.new(0, (tracked * 0.1) - rootSize, 0)
                     local ray = workspace:Blockcast(root.CFrame, BLOCKCAST_SIZE, checkDistance, rayParams)
-                    
                     if not ray then
                         local Failed = rand:NextNumber(0, 100) < DamageAccuracy.Value
                         local velo = velocity.Y
-
-                        if Failed then 
+                        if Failed then
                             root.AssemblyLinearVelocity = Vector3.new(velocity.X, velo + 0.5, velocity.Z)
                         else
                             root.AssemblyLinearVelocity = Vector3.new(velocity.X, -86, velocity.Z)
                         end
-
                         root.CFrame = root.CFrame + Vector3.new(0, (Failed and -extraGravity or extraGravity) * dt, 0)
                         extraGravity = extraGravity + (Failed and workspace.Gravity or -workspace.Gravity) * dt
                         tracked = velo
@@ -7563,33 +7548,24 @@ run(function()
             end
         end))
     end
-    
+
     NoFall = vape.Categories.Blatant:CreateModule({
         Name = 'NoFall',
-        Function = function(callback)
+Function = function(callback)
             if callback then
-                if Mode.Value == 'Damage Accuracy' then
-                    runDamageAccuracyMode()
-                elseif Mode.Value == 'Spoof' then
+                if Mode.Value == 'Spoof' then
                     local extraGravity = 0
-                    
                     NoFall:Clean(runService.PreSimulation:Connect(function(dt)
                         if not entitylib.isAlive then return end
-                        
                         local root = store.rootpart or entitylib.character.RootPart
                         local velocity = root.AssemblyLinearVelocity
-                        
                         if velocity.Y < -85 then
                             rayParams.FilterDescendantsInstances = {lplr.Character, gameCamera}
                             rayParams.CollisionGroup = root.CollisionGroup
-                            
                             local rootSize = root.Size.Y / 2 + entitylib.character.HipHeight
-                            local checkDistance = Vector3.new(0, (velocity.Y * 0.1) - rootSize, 0)
-                            local ray = workspace:Blockcast(root.CFrame, BLOCKCAST_SIZE, checkDistance, rayParams)
-                            
+                            local ray = workspace:Blockcast(root.CFrame, BLOCKCAST_SIZE, Vector3.new(0, (velocity.Y * 0.1) - rootSize, 0), rayParams)
                             if not ray then
-                                local cap = -(SpoofCap.Value)
-                                root.AssemblyLinearVelocity = Vector3.new(velocity.X, cap, velocity.Z)
+                                root.AssemblyLinearVelocity = Vector3.new(velocity.X, -(SpoofCap.Value), velocity.Z)
                                 root.CFrame += Vector3.new(0, extraGravity * dt, 0)
                                 extraGravity += -workspace.Gravity * dt
                             end
@@ -7597,43 +7573,71 @@ run(function()
                             extraGravity = 0
                         end
                     end))
-                elseif Mode.Value == 'Teleport' then
+
+                elseif Mode.Value == 'Gravity' then
+                    local extraGravity = 0
                     local tracked = 0
-                    repeat
-                        if entitylib.isAlive then
-                            local root = store.rootpart or entitylib.character.RootPart
-                            local velocity = root.AssemblyLinearVelocity
-                            tracked = entitylib.character.Humanoid.FloorMaterial == Enum.Material.Air and math.min(tracked, velocity.Y) or 0
-                            
-                            if tracked < -85 and canActivate() then
-                                rayParams.FilterDescendantsInstances = {lplr.Character, gameCamera}
-                                rayParams.CollisionGroup = root.CollisionGroup
-                                local rootSize = root.Size.Y / 2 + entitylib.character.HipHeight
-                                local ray = workspace:Blockcast(root.CFrame, BLOCKCAST_SIZE, VECTOR_DOWN, rayParams)
-                                if ray then
-                                    root.CFrame -= Vector3.new(0, root.Position.Y - (ray.Position.Y + rootSize), 0)
-                                    tracked = 0
+                    NoFall:Clean(runService.PreSimulation:Connect(function(dt)
+                        if not entitylib.isAlive then return end
+                        local root = entitylib.character.RootPart
+                        if root.AssemblyLinearVelocity.Y < -85 then
+                            rayParams.FilterDescendantsInstances = {lplr.Character, gameCamera}
+                            rayParams.CollisionGroup = root.CollisionGroup
+                            local rootSize = root.Size.Y / 2 + entitylib.character.HipHeight
+                            local ray = workspace:Blockcast(root.CFrame, BLOCKCAST_SIZE, Vector3.new(0, (tracked * 0.1) - rootSize, 0), rayParams)
+                            if not ray then
+                                root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X, -86, root.AssemblyLinearVelocity.Z)
+                                root.CFrame += Vector3.new(0, extraGravity * dt, 0)
+                                extraGravity += -workspace.Gravity * dt
+                            end
+                        else
+                            extraGravity = 0
+                        end
+                    end))
+
+                elseif Mode.Value == 'Teleport' then
+                    local active = true
+                    NoFall:Clean(function() active = false end)
+                    task.spawn(function()
+                        local tracked = 0
+                        repeat
+                            if entitylib.isAlive then
+                                local root = entitylib.character.RootPart
+                                local velocity = root.AssemblyLinearVelocity
+                                tracked = entitylib.character.Humanoid.FloorMaterial == Enum.Material.Air and math.min(tracked, velocity.Y) or 0
+                                if tracked < -85 and canActivate() then
+                                    rayParams.FilterDescendantsInstances = {lplr.Character, gameCamera}
+                                    rayParams.CollisionGroup = root.CollisionGroup
+                                    local rootSize = root.Size.Y / 2 + entitylib.character.HipHeight
+                                    local ray = workspace:Blockcast(root.CFrame, BLOCKCAST_SIZE, Vector3.new(0, -1000, 0), rayParams)
+                                    if ray then
+                                        root.CFrame -= Vector3.new(0, root.Position.Y - (ray.Position.Y + rootSize), 0)
+                                        tracked = 0
+                                    end
                                 end
                             end
-                        end
-                        task.wait(0.05)
-                    until not NoFall.Enabled
+                            task.wait(0.03)
+                        until not active
+                    end)
+
+                elseif Mode.Value == 'Damage Accuracy' then
+                    runDamageAccuracyMode()
                 end
             end
         end,
         Tooltip = 'Prevents taking fall damage.'
     })
-    
+
     Mode = NoFall:CreateDropdown({
         Name = 'Mode',
-        List = {'Spoof', 'Teleport', 'Damage Accuracy'},
+        List = {'Spoof', 'Gravity', 'Teleport', 'Damage Accuracy'},
         Default = 'Spoof',
         Function = function(val)
-            if DamageAccuracy and DamageAccuracy.Object then
-                DamageAccuracy.Object.Visible = val == 'Damage Accuracy'
-            end
             if SpoofCap and SpoofCap.Object then
                 SpoofCap.Object.Visible = val == 'Spoof'
+            end
+            if DamageAccuracy and DamageAccuracy.Object then
+                DamageAccuracy.Object.Visible = val == 'Damage Accuracy'
             end
             if NoFall.Enabled then
                 NoFall:Toggle()
@@ -7641,7 +7645,7 @@ run(function()
             end
         end
     })
-    
+
     Chance = NoFall:CreateSlider({
         Name = 'Chance',
         Min = 0,
@@ -7657,9 +7661,9 @@ run(function()
         Max = 86,
         Default = 86,
         Suffix = '',
-        Tooltip = 'Lower = less fall damage. 86 = original behaviour, 30 = barely any damage'
+        Tooltip = 'Lower = less fall damage. 86 = original, 30 = barely any damage'
     })
-    
+
     DamageAccuracy = NoFall:CreateSlider({
         Name = 'Damage Accuracy',
         Min = 0,
@@ -7670,16 +7674,16 @@ run(function()
         Tooltip = '0% = no damage, 100% = full damage',
         Visible = false
     })
-    
+
     AutoToggle = NoFall:CreateToggle({
         Name = "Auto Toggle",
         Default = false,
-        Function = function(val) 
+        Function = function(val)
             HealthThreshold.Object.Visible = val
         end,
         Tooltip = "Only activate when health is below threshold"
     })
-    
+
     HealthThreshold = NoFall:CreateSlider({
         Name = "Health Threshold",
         Min = 10,
@@ -7690,11 +7694,11 @@ run(function()
     HealthThreshold.Object.Visible = false
 
     task.defer(function()
-        if DamageAccuracy and DamageAccuracy.Object then
-            DamageAccuracy.Object.Visible = Mode.Value == 'Damage Accuracy'
-        end
         if SpoofCap and SpoofCap.Object then
             SpoofCap.Object.Visible = Mode.Value == 'Spoof'
+        end
+        if DamageAccuracy and DamageAccuracy.Object then
+            DamageAccuracy.Object.Visible = Mode.Value == 'Damage Accuracy'
         end
         if HealthThreshold and HealthThreshold.Object then
             HealthThreshold.Object.Visible = AutoToggle.Enabled
