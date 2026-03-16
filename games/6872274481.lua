@@ -1,6 +1,4 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local run = function(func)
     local ok, err = pcall(func)
     if not ok then
@@ -2910,11 +2908,12 @@ run(function()
             Darker = true
         })
 
-        task.defer(function()
-            if BlockCPS and BlockCPS.Object then
-                BlockCPS.Object.Visible = true
-            end
-        end)
+		task.defer(function()
+			if BlockCPS and BlockCPS.Object then
+				BlockCPS.Object.Visible = PlaceBlocksToggle and PlaceBlocksToggle.Enabled
+			end
+			updateModeVisibility()  
+		end)
 
     else
         local AutoClicker
@@ -3157,18 +3156,18 @@ run(function()
             end
         end
 
-        local function updateModeVisibility()
-            local isAero = ACMode.Value == 'Aero'
-            if SwingSwordToggle and SwingSwordToggle.Object then SwingSwordToggle.Object.Visible = isAero end
-            if SwordCPS and SwordCPS.Object then SwordCPS.Object.Visible = isAero end
-            if ShootProjectilesToggle and ShootProjectilesToggle.Object then ShootProjectilesToggle.Object.Visible = isAero end
-            if ProjectileCPS and ProjectileCPS.Object then ProjectileCPS.Object.Visible = isAero end
-            if KeybindToggle and KeybindToggle.Object then KeybindToggle.Object.Visible = isAero end
-            if KeybindMode and KeybindMode.Object then KeybindMode.Object.Visible = isAero and KeybindEnabled end
-            if KeybindList and KeybindList.Object then KeybindList.Object.Visible = isAero and KeybindEnabled and not UseMouseBind end
-            if MouseBindToggle and MouseBindToggle.Object then MouseBindToggle.Object.Visible = isAero and KeybindEnabled end
-            if MouseBindList and MouseBindList.Object then MouseBindList.Object.Visible = isAero and KeybindEnabled and UseMouseBind end
-        end
+		local function updateModeVisibility()
+			local isAero = ACMode.Value == 'Aero'
+			if SwingSwordToggle and SwingSwordToggle.Object then SwingSwordToggle.Object.Visible = isAero end
+			if SwordCPS and SwordCPS.Object then SwordCPS.Object.Visible = isAero and (SwingSwordToggle and SwingSwordToggle.Enabled) end
+			if ShootProjectilesToggle and ShootProjectilesToggle.Object then ShootProjectilesToggle.Object.Visible = isAero end
+			if ProjectileCPS and ProjectileCPS.Object then ProjectileCPS.Object.Visible = isAero and (ShootProjectilesToggle and ShootProjectilesToggle.Enabled) end
+			if KeybindToggle and KeybindToggle.Object then KeybindToggle.Object.Visible = isAero end
+			if KeybindMode and KeybindMode.Object then KeybindMode.Object.Visible = isAero and KeybindEnabled end
+			if KeybindList and KeybindList.Object then KeybindList.Object.Visible = isAero and KeybindEnabled and not UseMouseBind end
+			if MouseBindToggle and MouseBindToggle.Object then MouseBindToggle.Object.Visible = isAero and KeybindEnabled end
+			if MouseBindList and MouseBindList.Object then MouseBindList.Object.Visible = isAero and KeybindEnabled and UseMouseBind end
+		end
 
         AutoClicker = vape.Categories.Combat:CreateModule({
             Name = 'AutoClicker',
