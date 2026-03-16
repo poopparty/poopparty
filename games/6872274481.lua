@@ -5787,9 +5787,11 @@ run(function()
             if store.hand.toolType ~= 'sword' or bedwars.DaoController.chargingMaid then return false end
         end
 
-        if LegitAura.Enabled then
-            if (tick() - bedwars.SwordController.lastSwing) > 0.2 then return false end
-        end
+		if LegitAura.Enabled then
+			local lastSwing = bedwars.SwordController.lastSwing or 0
+			local swingDelay = SwingTime.Enabled and SwingTimeSlider.Value or 0.2
+			if (tick() - lastSwing) > swingDelay then return false end
+		end
 
         if SwingTime.Enabled then
             local swingSpeed = SwingTimeSlider.Value
@@ -6746,7 +6748,8 @@ run(function()
 		end
 
 		if LegitAura.Enabled then
-			if (tick() - bedwars.SwordController.lastSwing) > 0.2 then return false end
+			local lastSwing = bedwars.SwordController.lastSwing or 0
+			if (tick() - lastSwing) > ChargeTime.Value then return false end
 		end
 
 		return sword, meta
