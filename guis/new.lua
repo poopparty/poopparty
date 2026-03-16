@@ -5762,7 +5762,6 @@ function mainapi:Load(skipgui, profile)
 	end
 
 	self.Profile = profile or guidata.Profile or 'default'
-	shared.VapeCurrentProfile = self.Profile
 	self.Profiles = guidata.Profiles or {{
 		Name = 'default', Bind = {}
 	}}
@@ -5973,7 +5972,6 @@ function mainapi:Save(newprofile)
 
 	writefile('newvape/profiles/'..game.GameId..'.gui.txt', httpService:JSONEncode(guidata))
 	writefile('newvape/profiles/'..self.Profile..self.Place..'.txt', httpService:JSONEncode(savedata))
-	shared.VapeCurrentProfile = self.Profile
 end
 
 function mainapi:SaveOptions(object, savedoptions)
@@ -6028,7 +6026,7 @@ function mainapi:Uninject()
 	shared.vape = nil
 	shared.vapereload = nil
 	shared.VapeIndependent = nil
-	shared.vape_running = nil 
+	shared.vape_running = nil -- Clear the flag
 end
 
 gui = Instance.new('ScreenGui')
@@ -6076,7 +6074,6 @@ cursor.BackgroundTransparency = 1
 cursor.Visible = false
 cursor.Image = 'rbxasset://textures/Cursors/KeyboardMouse/ArrowFarCursor.png'
 cursor.Parent = gui
-mainapi.Cursor = cursor
 notifications = Instance.new('Folder')
 notifications.Name = 'Notifications'
 notifications.Parent = scaledgui
@@ -7100,7 +7097,7 @@ guipane:CreateToggle({
     Function = function(callback)
         shared.VapeIndependent = not callback
     end,
-    Default = true, 
+    Default = false, 
     Tooltip = 'Automatically re‑inject after teleporting to another server.'
 })
 
@@ -8116,12 +8113,9 @@ mainapi:Clean(inputService.InputBegan:Connect(function(inputObj)
 				end
 			end
 		end
-        if toggled then
-            mainapi:UpdateTextGUI()
-            if not clickgui.Visible and mainapi.Cursor then
-                mainapi.Cursor.Visible = false
-            end
-        end
+		if toggled then
+			mainapi:UpdateTextGUI()
+		end
 
 		for _, v in mainapi.Profiles do
 			if checkKeybinds(mainapi.HeldKeybinds, v.Bind, inputObj.KeyCode.Name) and v.Name ~= mainapi.Profile then
