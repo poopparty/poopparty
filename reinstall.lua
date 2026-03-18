@@ -1,6 +1,6 @@
 local folderToClean = "newvape"
 local folderToKeep = "profiles"
-local reinstallUrl = "https://raw.githubusercontent.com/poopparty/poopparty/main/NewMainScript.lua"
+local reinstallUrl = "https://raw.githubusercontent.com/wrealaero/poopparty/main/NewMainScript.lua"
 
 local function deleteRecursive(path, keepPath)
     if path == keepPath then return end
