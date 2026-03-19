@@ -9749,6 +9749,7 @@ run(function()
     local DrawingToggle
     local ShowKits
     local Rank
+    local Enchant
     local Scale
     local FontOption
     local Teammates
@@ -9761,6 +9762,8 @@ run(function()
     local lastUpdate = {}
     local kitCache = {}
     local equipmentCache = {}
+    local enchantCache = {}
+    local enchantConnections = {}
     local tick = tick
     local math_floor = math.floor
     local math_round = math.round
@@ -9890,6 +9893,46 @@ run(function()
         ['winter_lady'] = "rbxassetid://83274578564074",
     }
 
+    -- Enchant system: loads enchant-meta once, builds statusEffect -> image map
+    local enchantImageMap = nil
+    local function buildEnchantMap()
+        if enchantImageMap then return enchantImageMap end
+        enchantImageMap = {}
+        task.spawn(function()
+            if vape.ThreadFix then setthreadidentity(8) end
+            local ok, meta = pcall(function()
+                return require(game:GetService('ReplicatedStorage').TS.enchant['enchant-meta'])
+            end)
+            if not ok or not meta then return end
+            for _, subMeta in pairs({meta.EnchantMeta, meta.ToolEnchantMeta, meta.ArmorEnchantMeta}) do
+                if type(subMeta) == 'table' then
+                    for _, v in pairs(subMeta) do
+                        if type(v) == 'table' and v.statusEffect and v.image then
+                            enchantImageMap[v.statusEffect] = v.image
+                        end
+                    end
+                end
+            end
+        end)
+        return enchantImageMap
+    end
+
+    -- Reads active enchant from character attributes (StatusEffect_fire_1 = -1 means active)
+    local function getActiveEnchantImage(char)
+        if not char then return '' end
+        local map = buildEnchantMap()
+        for attr, val in pairs(char:GetAttributes()) do
+            if attr:sub(1, 13) == 'StatusEffect_' and type(val) == 'number' and val < 0 then
+                local effectName = attr:sub(14)
+                if not effectName:find('stacks') then
+                    local img = map[effectName]
+                    if img and img ~= '' then return img end
+                end
+            end
+        end
+        return ''
+    end
+
     local Added = {
         Normal = function(ent)
             if not Targets.Players.Enabled and ent.Player then return end
@@ -10006,6 +10049,27 @@ run(function()
                 end)
             end
 
+            if Enchant.Enabled and ent.Player and ent.Character then
+                local Icon = Instance.new('ImageLabel')
+                Icon.Name = 'EnchantIcon'
+                Icon.Size = udim2fromOffset(30, 30)
+                Icon.Position = udim2fromOffset(-30, -4)
+                Icon.BackgroundTransparency = 1
+                Icon.Image = getActiveEnchantImage(ent.Character)
+                Icon.Parent = nametag
+                enchantCache[ent] = Icon.Image
+                -- Listen for attribute changes so icon updates instantly when enchant changes
+                enchantConnections[ent] = ent.Character.AttributeChanged:Connect(function(attr)
+                    if attr:sub(1, 13) == 'StatusEffect_' then
+                        local newImage = getActiveEnchantImage(ent.Character)
+                        if enchantCache[ent] ~= newImage then
+                            Icon.Image = newImage
+                            enchantCache[ent] = newImage
+                        end
+                    end
+                end)
+            end
+
             Reference[ent] = nametag
             lastUpdate[ent] = 0
         end,
@@ -10061,6 +10125,11 @@ run(function()
                 lastUpdate[ent] = nil
                 kitCache[ent] = nil
                 equipmentCache[ent] = nil
+                enchantCache[ent] = nil
+                if enchantConnections[ent] then
+                    enchantConnections[ent]:Disconnect()
+                    enchantConnections[ent] = nil
+                end
                 v:Destroy()
             end
         end,
@@ -10336,6 +10405,8 @@ run(function()
                 lastUpdate = {}
                 kitCache = {}
                 equipmentCache = {}
+                enchantCache = {}
+                enchantConnections = {}
             end
         end,
         Tooltip = 'Renders nametags on entities through walls.'
@@ -10443,6 +10514,18 @@ run(function()
     Rank = NameTags:CreateToggle({
         Name = 'Rank',
         Tooltip = 'Displays player\'s rank icon',
+        Function = function()
+            if NameTags.Enabled then
+                NameTags:Toggle()
+                NameTags:Toggle()
+            end
+        end
+    })
+
+    Enchant = NameTags:CreateToggle({
+        Name = 'Enchant',
+        Tooltip = 'Displays active weapon enchant icon',
+        Default = true,
         Function = function()
             if NameTags.Enabled then
                 NameTags:Toggle()
