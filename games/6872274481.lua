@@ -1797,9 +1797,16 @@ run(function()
 	local ShakeAmount
 	local ShopCheck
 	local WorkWithProjectiles
-
 	local lockedTarget = nil
 	local rng = Random.new()
+
+	local function isEntityAlive(ent)
+		if not ent or not ent.Character then return false end
+		local humanoid = ent.Character:FindFirstChildOfClass("Humanoid")
+		if not humanoid then return false end
+		local health = ent.Character:GetAttribute("Health") or humanoid.Health
+		return health and health > 0
+	end
 
 	local function isFirstPerson()
 		local head = lplr.Character and lplr.Character:FindFirstChild("Head")
@@ -1820,7 +1827,7 @@ run(function()
 			'LeftUpperLeg', 'RightUpperLeg', 'LeftLowerLeg', 'RightLowerLeg',
 			'LeftFoot', 'RightFoot', 'LeftHand', 'RightHand'
 		}
-		for _, partName in partNames do
+		for _, partName in ipairs(partNames) do
 			local part = character:FindFirstChild(partName)
 			if part then
 				local dirToPart = (part.Position - mouseRay.Origin).Unit
@@ -1875,16 +1882,21 @@ run(function()
 						return
 					end
 
-					local ent
+					local ent = nil
+
 					if PriorityMode.Enabled and lockedTarget then
-						local delta = (lockedTarget.RootPart.Position - entitylib.character.RootPart.Position)
-						local localfacing = entitylib.character.RootPart.CFrame.LookVector * Vector3.new(1, 0, 1)
-						local flatDelta = delta * Vector3.new(1, 0, 1)
-						if flatDelta.Magnitude > 0.001 then
-							local angle = math.acos(math.clamp(localfacing:Dot(flatDelta.Unit), -1, 1))
-							local dist = delta.Magnitude
-							if dist <= Distance.Value and angle < (math.rad(AngleSlider.Value) / 2) then
-								ent = lockedTarget
+						if isEntityAlive(lockedTarget) then
+							local delta = (lockedTarget.RootPart.Position - entitylib.character.RootPart.Position)
+							local localfacing = entitylib.character.RootPart.CFrame.LookVector * Vector3.new(1, 0, 1)
+							local flatDelta = delta * Vector3.new(1, 0, 1)
+							if flatDelta.Magnitude > 0.001 then
+								local angle = math.acos(math.clamp(localfacing:Dot(flatDelta.Unit), -1, 1))
+								local dist = delta.Magnitude
+								if dist <= Distance.Value and angle < (math.rad(AngleSlider.Value) / 2) then
+									ent = lockedTarget
+								else
+									lockedTarget = nil
+								end
 							else
 								lockedTarget = nil
 							end
@@ -1902,19 +1914,26 @@ run(function()
 							NPCs = Targets.NPCs.Enabled,
 							Sort = sortmethods[Sort.Value]
 						})
+						if ent and not isEntityAlive(ent) then
+							ent = nil
+						end
 						if PriorityMode.Enabled and ent then
 							lockedTarget = ent
 						end
 					end
 
 					if KillauraTarget.Enabled and store.KillauraTarget then
-						ent = store.KillauraTarget
-						if PriorityMode.Enabled then
-							lockedTarget = ent
+						if isEntityAlive(store.KillauraTarget) then
+							ent = store.KillauraTarget
+							if PriorityMode.Enabled then
+								lockedTarget = ent
+							end
+						else
+							store.KillauraTarget = nil
 						end
 					end
 
-					if ent and ent.RootPart then
+					if ent and ent.RootPart and isEntityAlive(ent) then
 						local delta = (ent.RootPart.Position - entitylib.character.RootPart.Position)
 						local localfacing = entitylib.character.RootPart.CFrame.LookVector * Vector3.new(1, 0, 1)
 						local flatDelta = delta * Vector3.new(1, 0, 1)
@@ -1960,6 +1979,15 @@ run(function()
 						end
 
 						local targetCFrame = CFrame.lookAt(gameCamera.CFrame.p, aimPosition)
+						local maxAnglePerFrame = math.rad(aimSpeed * 15) 
+						local currentLook = gameCamera.CFrame.LookVector
+						local desiredLook = (aimPosition - gameCamera.CFrame.p).Unit
+						local angleBetween = math.acos(math.clamp(currentLook:Dot(desiredLook), -1, 1))
+						if angleBetween > maxAnglePerFrame then
+							local rotAxis = currentLook:Cross(desiredLook).Unit
+							local partialRotation = CFrame.fromAxisAngle(rotAxis, maxAnglePerFrame)
+							targetCFrame = CFrame.new(gameCamera.CFrame.p, gameCamera.CFrame.p + (partialRotation * currentLook))
+						end
 						gameCamera.CFrame = gameCamera.CFrame:Lerp(targetCFrame, aimSpeed * dt)
 					else
 						if PriorityMode.Enabled then
@@ -1987,6 +2015,18 @@ run(function()
 	Sort = AimAssist:CreateDropdown({
 		Name = 'Target Mode',
 		List = methods
+	})
+	AimPart = AimAssist:CreateDropdown({
+		Name = 'Aim Part',
+		List = {'Torso', 'Head', 'Closest'},
+		Default = 'Torso'
+	})
+
+	ViewMode = AimAssist:CreateDropdown({
+		Name = 'View Mode',
+		List = {'First Person', 'Third Person', 'Both'},
+		Default = 'Both',
+		Tooltip = 'Only aim in first person, third person, or always'
 	})
 	AimSpeed = AimAssist:CreateSlider({
 		Name = 'Aim Speed',
@@ -2017,24 +2057,10 @@ run(function()
 		Name = 'Use killaura target'
 	})
 	StrafeIncrease = AimAssist:CreateToggle({Name = 'Strafe increase'})
-
-	AimPart = AimAssist:CreateDropdown({
-		Name = 'Aim Part',
-		List = {'Torso', 'Head', 'Closest'},
-		Default = 'Torso'
-	})
-
-	ViewMode = AimAssist:CreateDropdown({
-		Name = 'View Mode',
-		List = {'First Person', 'Third Person', 'Both'},
-		Default = 'Both',
-		Tooltip = 'Only aim in first person, third person, or always'
-	})
-
 	PriorityMode = AimAssist:CreateToggle({
 		Name = 'Priority Mode',
 		Default = false,
-		Tooltip = 'Lock onto one target until they leave range'
+		Tooltip = 'Lock onto one target until they leave range or die'
 	})
 
 	ShakeToggle = AimAssist:CreateToggle({
