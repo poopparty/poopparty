@@ -1,7 +1,4 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local run = function(func) func() end
 local cloneref = cloneref or function(obj) return obj end
 
@@ -943,4 +940,131 @@ run(function()
 			if LeaderboardSpoof.Enabled then doDispatch() end
 		end
 	})
+end)
+
+run(function()
+    local SetPlayerLevel
+    local originalGetLevel = nil
+    local customLevel = 1
+
+    local function applyLevelOverride()
+        local player = lplr
+        if not player then return end
+        local gamePlayer = bedwars.GamePlayerUtil.getGamePlayer(player)
+        if gamePlayer and not originalGetLevel then
+            originalGetLevel = gamePlayer.getLevel
+            gamePlayer.getLevel = function(self)
+                return customLevel
+            end
+        end
+    end
+
+    local function removeLevelOverride()
+        if originalGetLevel then
+            local player = lplr
+            if player then
+                local gamePlayer = bedwars.GamePlayerUtil.getGamePlayer(player)
+                if gamePlayer then
+                    gamePlayer.getLevel = originalGetLevel
+                end
+            end
+            originalGetLevel = nil
+        end
+    end
+
+    SetPlayerLevel = vape.Categories.Render:CreateModule({
+        Name = "SetPlayerLevel",
+        Function = function(state)
+            if state then
+                applyLevelOverride()
+                SetPlayerLevel:Clean(lplr.CharacterAdded:Connect(function()
+                    if SetPlayerLevel.Enabled then
+                        applyLevelOverride()
+                    end
+                end))
+            else
+                removeLevelOverride()
+            end
+        end,
+        Tooltip = "Spoof your player level (nametag updates on respawn)"
+    })
+
+    SetPlayerLevel:CreateSlider({
+        Name = "Level",
+        Min = 1,
+        Max = 1000,
+        Default = 1,
+        Decimal = 1,
+        Function = function(val)
+            customLevel = math.floor(val)
+            if SetPlayerLevel.Enabled then
+            end
+        end
+    })
+end)
+
+run(function()
+    local SetPlayerWins
+    local originalWins = nil
+    local customWins = 0
+    local winsValue = nil 
+
+    local function findWinsValue()
+        local leaderstats = lplr:FindFirstChild("leaderstats")
+        if leaderstats then
+            return leaderstats:FindFirstChild("Wins") or leaderstats:FindFirstChild("OverallWins")
+        end
+        return nil
+    end
+
+    local function applyWinsOverride()
+        winsValue = findWinsValue()
+        if winsValue and winsValue:IsA("IntValue") then
+            if originalWins == nil then
+                originalWins = winsValue.Value
+            end
+            winsValue.Value = customWins
+        else
+            notif("SetPlayerWins", "Could not find Wins value", 3)
+        end
+    end
+
+    local function restoreWins()
+        if winsValue and winsValue:IsA("IntValue") and originalWins ~= nil then
+            winsValue.Value = originalWins
+        end
+        winsValue = nil
+        originalWins = nil
+    end
+
+    SetPlayerWins = vape.Categories.Minigames:CreateModule({
+        Name = "SetPlayerWins",
+        Function = function(state)
+            if state then
+                applyWinsOverride()
+                SetPlayerWins:Clean(lplr.ChildAdded:Connect(function(child)
+                    if child.Name == "leaderstats" and SetPlayerWins.Enabled then
+                        applyWinsOverride()
+                    end
+                end))
+            else
+                restoreWins()
+            end
+        end,
+        Tooltip = "Modify your wins in leaderstats (client‑sided)"
+    })
+
+    SetPlayerWins:CreateSlider({
+        Name = "Wins",
+        Min = 0,
+        Max = 100000,
+        Default = 0,
+        Decimal = 1,
+        Function = function(val)
+            customWins = math.floor(val)
+            if SetPlayerWins.Enabled and winsValue then
+                winsValue.Value = customWins
+            end
+        end
+    })
 end)
