@@ -35626,7 +35626,7 @@ run(function()
 		end
 	end
 	
-	AutoHonor = vape.Categories.AltFarm:CreateModule({
+	AutoHonor = vape.Categories.Minigames:CreateModule({
 		Name = "AutoHonor",
 		Function = function(callback)
 			if callback then
