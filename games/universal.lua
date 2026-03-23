@@ -4515,9 +4515,10 @@ run(function()
 	})
 	BoxSize = ESP:CreateSlider({
 		Name = 'Box Size',
-		Min = 1,
+		Min = 0.1,
 		Max = 5,
 		Default = 2,
+		Decimal = 10,
 		Darker = true
 	})
 	BoundingBox = ESP:CreateToggle({
