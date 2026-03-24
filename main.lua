@@ -81,16 +81,19 @@ local function finishLoading()
 
 	local teleportedServers
 	vape:Clean(playersService.LocalPlayer.OnTeleport:Connect(function()
-		if (not teleportedServers) and (not shared.VapeIndependent) then
-			teleportedServers = true
-			local teleportScript = [[
-				shared.vapereload = true
-				if shared.VapeDeveloper then
-					loadstring(readfile('newvape/loader.lua'), 'loader')()
-				else
-					loadstring(game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/loader.lua', true), 'loader')()
-				end
-			]]
+        if (not teleportedServers) and (not shared.VapeIndependent) and vape.AutoTeleport and vape.AutoTeleport.Enabled then
+            teleportedServers = true
+            local teleportArgs = {}
+            if shared.ValidatedUsername then teleportArgs[#teleportArgs+1] = 'shared.ValidatedUsername = "'..shared.ValidatedUsername..'"' end
+            if getgenv().Closet then teleportArgs[#teleportArgs+1] = 'getgenv().Closet = true' end
+            local teleportScript = table.concat(teleportArgs, '\n')..[[
+                shared.vapereload = true
+                if shared.VapeDeveloper then
+                    loadstring(readfile('newvape/loader.lua'), 'loader')()
+                else
+                    loadstring(game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/'..readfile('newvape/profiles/commit.txt')..'/loader.lua', true), 'loader')()
+                end
+            ]]
 			if shared.VapeDeveloper then
 				teleportScript = 'shared.VapeDeveloper = true\n'..teleportScript
 			end
