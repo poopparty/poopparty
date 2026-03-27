@@ -56,4 +56,6 @@ if not shared.VapeDeveloper then
 	writefile('newvape/profiles/commit.txt', commit)
 end
 
-return loadstring(downloadFile('newvape/main.lua'), 'main')()
+return loadstring(downloadFile('newvape/main.lua'), 'main')({
+    Username = shared.ValidatedUsername
+})
