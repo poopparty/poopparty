@@ -9146,6 +9146,7 @@ run(function()
 		end
 
 		local connAdded = collectionService:GetInstanceAddedSignal(tag):Connect(function(v)
+			if tag == 'bee' and (v.Name:find('TamedBee') or v:FindFirstChild('TamedBee')) then return end
 			Added(v.PrimaryPart, icon, false)
 		end)
 		table.insert(currentConnections, connAdded)
@@ -9157,6 +9158,7 @@ run(function()
 		end)
 		table.insert(currentConnections, connRemoved)
 		for _, v in collectionService:GetTagged(tag) do
+			if tag == 'bee' and (v.Name:find('TamedBee') or v:FindFirstChild('TamedBee')) then continue end
 			Added(v.PrimaryPart, icon, false)
 		end
 	end
