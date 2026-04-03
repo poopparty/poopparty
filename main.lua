@@ -71,9 +71,8 @@ local function finishLoading()
 	vape.Init = nil
 	vape:Load()
 	task.spawn(function()
-		RestoreProfiles()
 		repeat
-			vape:Save()
+			pcall(function() vape:Save() end)
 			task.wait(10)
 		until not vape.Loaded
 	end)
@@ -97,7 +96,8 @@ local function finishLoading()
 			if shared.ValidatedUsername then
 				teleportScript = 'shared.ValidatedUsername = "'..shared.ValidatedUsername..'"\n'..teleportScript
 			end
-			vape:Save()
+			local _ok, _err = pcall(function() vape:Save() end)
+			if not _ok then warn('[AEROV4] save failed before teleport: ' .. tostring(_err)) end
 			queue_on_teleport(teleportScript)
 		end
 	end))
@@ -154,15 +154,16 @@ end
 
 if not shared.VapeIndependent then
     loadstring(downloadFile('newvape/games/universal.lua'), 'universal')()
-    if isfile('newvape/games/' .. game.PlaceId .. '.lua') then
-        loadstring(downloadFile('newvape/games/' .. game.PlaceId .. '.lua'), tostring(game.PlaceId))(...)
+    local gameFileId = (game.GameId == 2619619496) and (game.PlaceId == 6872265039 and 6872265039 or 6872274481) or game.PlaceId
+    if isfile('newvape/games/' .. gameFileId .. '.lua') then
+        loadstring(downloadFile('newvape/games/' .. gameFileId .. '.lua'), tostring(gameFileId))(...)
     else
         if not shared.VapeDeveloper then
             local suc, res = pcall(function()
-                return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/' .. readfile('newvape/profiles/commit.txt') .. '/games/' .. game.PlaceId .. '.lua', true)
+                return game:HttpGet('https://raw.githubusercontent.com/poopparty/poopparty/' .. readfile('newvape/profiles/commit.txt') .. '/games/' .. gameFileId .. '.lua', true)
             end)
             if suc and res ~= '404: Not Found' then
-                loadstring(downloadFile('newvape/games/' .. game.PlaceId .. '.lua'), tostring(game.PlaceId))(...)
+                loadstring(downloadFile('newvape/games/' .. gameFileId .. '.lua'), tostring(gameFileId))(...)
             end
         end
     end
