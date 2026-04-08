@@ -101,6 +101,49 @@ local TrapDisabler
 local AntiFallPart
 local bedwars, remotes, sides, oldinvrender, oldSwing = {}, {}, {}
 
+local paidAccounts = {}
+local function loadPaidAccounts()
+    pcall(function()
+        if isfile('newvape/profiles/paid_accounts.txt') then
+            for id in readfile('newvape/profiles/paid_accounts.txt'):gmatch('%d+') do
+                paidAccounts[tonumber(id)] = true
+            end
+        end
+    end)
+end
+loadPaidAccounts()
+
+local function isAccountPaid(player)
+    return paidAccounts[player.UserId] == true
+end
+
+local function tagPaidPlayers()
+    for _, player in playersService:GetPlayers() do
+        if player ~= lplr and isAccountPaid(player) then
+            local char = player.Character
+            if char then
+                char:SetAttribute('_aeropaid', true)
+            end
+        end
+    end
+end
+tagPaidPlayers()
+
+vape:Clean(playersService.PlayerAdded:Connect(function(player)
+    if isAccountPaid(player) then
+        local char = player.Character or player.CharacterAdded:Wait()
+        char:SetAttribute('_aeropaid', true)
+    end
+end))
+
+vape:Clean(playersService.PlayerRemoving:Connect(function(player)
+    
+end))
+
+getgenv().isAeroPaid = function(player)
+    return isAccountPaid(player) or (player.Character and player.Character:GetAttribute('_aeropaid') == true)
+end
+
 local function addBlur(parent)
 	local blur = Instance.new('ImageLabel')
 	blur.Name = 'Blur'
@@ -7918,6 +7961,11 @@ run(function()
 						wasHovering = false
 						local s, r = pcall(old, ...)
 						return s and r or nil
+					end
+
+					if plr.Player and getgenv().isAeroPaid and getgenv().isAeroPaid(plr.Player) then
+						wasHovering = false
+						return old(...)
 					end
 
 					if not shouldPAWork() then
@@ -22685,6 +22733,7 @@ run(function()
 	local NoFall
 	local NoFallMethod
 	local LimitToItems
+	local BlocksBelow
 
 	local nfRayParams = RaycastParams.new()
 	nfRayParams.FilterType = Enum.RaycastFilterType.Blacklist
@@ -22715,7 +22764,9 @@ run(function()
 
 	local function nfThrowPearl(pos, spot, pearlTool)
 		local meta = bedwars.ProjectileMeta.telepearl
-		local offsets = {Vector3.new(0,-1.5,0), Vector3.new(0,0,0), Vector3.new(0,1,0), Vector3.new(0,-3,0)}
+		local camFlat = gameCamera.CFrame.LookVector * Vector3.new(1, 0, 1)
+		camFlat = (camFlat.Magnitude > 0.01) and camFlat.Unit * 4 or Vector3.new(4, 0, 0)
+		local offsets = {camFlat + Vector3.new(0, 2, 0), camFlat, Vector3.new(0, -1.5, 0), Vector3.new(0, 0, 0)}
 		local calc
 		for _, offset in offsets do
 			calc = prediction.SolveTrajectory(pos, meta.launchVelocity, meta.gravitationalAcceleration, spot + offset, Vector3.zero, workspace.Gravity, 0, 0, nil, false, lplr:GetNetworkPing())
@@ -22807,7 +22858,7 @@ run(function()
 						local fallHeight = fallStartY and ((fallStartY - root.Position.Y) / 3) or 0
 						local groundRay = workspace:Raycast(root.Position, Vector3.new(0, -99935, 0), nfRayParams)
 
-						if falling and groundRay and fallHeight >= 7 and not pearlFired and not blockedByManual and (currentTime - cooldown) > 1 then
+						if falling and groundRay and fallHeight >= (BlocksBelow and BlocksBelow.Value or 7) and not pearlFired and not blockedByManual and (currentTime - cooldown) > 1 then
 							local method = NoFallMethod and NoFallMethod.Value or 'TelePearl'
 							if method == 'TelePearl' then
 								if pearl then
@@ -22838,6 +22889,13 @@ run(function()
 		Name = 'Limit to Pearl',
 		Default = false,
 		Tooltip = 'Only pearls when already holding pearl'
+	})
+	BlocksBelow = NoFall:CreateSlider({
+		Name = 'Blocks Below Trigger',
+		Min = 3,
+		Max = 20,
+		Default = 7,
+		Tooltip = 'How many blocks of falling before the pearl throws'
 	})
 end)
 
