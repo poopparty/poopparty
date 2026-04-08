@@ -7724,9 +7724,6 @@ run(function()
 	local wasHovering = false
 	local PAFOVCircle
 	local ProjectileAimbot
-	local paVelocityHistory = {}
-	local paPingHistory = {}
-	local paStrafingHistory = {}
 	local paFOVCircleDrawing = nil
 	local AutoCharge
 	local paFOVCircleConnection = nil
@@ -7746,13 +7743,9 @@ run(function()
 			paFOVCircleDrawing.Color = Color3.fromRGB(255, 255, 255)
 			paFOVCircleDrawing.Filled = false
 			paFOVCircleDrawing.NumSides = 64
-			local fovCircleThrottle = 0
-			local fovCircleShouldShow = false
 			paFOVCircleConnection = runService.RenderStepped:Connect(function()
-				if not (paFOVCircleDrawing and FOV and FOV.Value) then return end
-				fovCircleThrottle = fovCircleThrottle + 1
-				if fovCircleThrottle % 6 == 0 then
-					fovCircleShouldShow = false
+				if paFOVCircleDrawing and FOV and FOV.Value then
+					local shouldShow = false
 					if PAFOVCircle and PAFOVCircle.Enabled and ProjectileAimbot and ProjectileAimbot.Enabled then
 						local tool = store.hand and store.hand.tool
 						local itemType = tool and tool.Name or ""
@@ -7762,7 +7755,7 @@ run(function()
 							local isArrow = src.ammoItemTypes and table.find(src.ammoItemTypes, 'arrow')
 							local isHeadhunter = itemType:find('headhunter')
 							if isArrow or isHeadhunter then
-								fovCircleShouldShow = true
+								shouldShow = true
 							elseif OtherProjectiles and OtherProjectiles.Enabled then
 								local projectileType = src.projectileType and (type(src.projectileType) == 'function' and src.projectileType('arrow') or src.projectileType) or ""
 								local blacklisted = false
@@ -7773,16 +7766,16 @@ run(function()
 									end
 								end
 								if not blacklisted then
-									fovCircleShouldShow = true
+									shouldShow = true
 								end
 							end
 						end
 					end
+					paFOVCircleDrawing.Visible = shouldShow
+					local mousePos = inputService:GetMouseLocation()
+					paFOVCircleDrawing.Position = Vector2.new(mousePos.X, mousePos.Y)
+					paFOVCircleDrawing.Radius = FOV.Value
 				end
-				paFOVCircleDrawing.Visible = fovCircleShouldShow
-				local mousePos = inputService:GetMouseLocation()
-				paFOVCircleDrawing.Position = Vector2.new(mousePos.X, mousePos.Y)
-				paFOVCircleDrawing.Radius = FOV.Value
 			end)
 		end
 	end
@@ -7932,12 +7925,9 @@ run(function()
 						runPAFOVCircle(PAFOVCircle.Enabled)
 					end
 					if DesirePAHideCursor and DesirePAHideCursor.Enabled and not cursorRenderConnection then
-						cursorRenderConnection = task.spawn(function()
-							while ProjectileAimbot.Enabled do
-								checkGUIState()
-								updateCursor()
-								task.wait(0.1)
-							end
+						cursorRenderConnection = runService.RenderStepped:Connect(function()
+							checkGUIState()
+							updateCursor()
 						end)
 					end
 
@@ -8040,61 +8030,7 @@ run(function()
 						end
 					end
 
-					local rawVelocity = targetBodyPart.Velocity
-					local plrKey = tostring(plr.Player and plr.Player.UserId or tostring(plr))
-					if not paVelocityHistory[plrKey] then paVelocityHistory[plrKey] = {} end
-					if not paPingHistory[plrKey] then paPingHistory[plrKey] = {} end
-					if not paStrafingHistory[plrKey] then paStrafingHistory[plrKey] = {} end
-					local hist = paVelocityHistory[plrKey]
-					table.insert(hist, rawVelocity)
-					if #hist > 6 then table.remove(hist, 1) end
-					local pingHist = paPingHistory[plrKey]
-					table.insert(pingHist, lplr:GetNetworkPing())
-					if #pingHist > 8 then table.remove(pingHist, 1) end
-					local smoothedPing = 0
-					for _, p in pingHist do smoothedPing = smoothedPing + p end
-					smoothedPing = (smoothedPing / #pingHist) * 2 
-
-					local isAero = not (PAMode and PAMode.Value == 'Mafia')
-					local targetVelocity
-
-					if isAero then
-						local smoothedVel = Vector3.zero
-						for _, v in hist do smoothedVel = smoothedVel + v end
-						smoothedVel = smoothedVel / #hist
-						local strafeHist = paStrafingHistory[plrKey]
-						local hVel = Vector3.new(rawVelocity.X, 0, rawVelocity.Z)
-						table.insert(strafeHist, hVel)
-						if #strafeHist > 6 then table.remove(strafeHist, 1) end
-
-						local reversals = 0
-						for i = 2, #strafeHist do
-							local prev = strafeHist[i - 1]
-							local curr = strafeHist[i]
-							if prev.Magnitude > 1 and curr.Magnitude > 1 then
-								if prev.Unit:Dot(curr.Unit) < -0.3 then
-									reversals = reversals + 1
-								end
-							end
-						end
-
-						if reversals >= 2 then
-							local avgX, avgZ = 0, 0
-							for _, v in strafeHist do avgX = avgX + v.X; avgZ = avgZ + v.Z end
-							avgX = avgX / #strafeHist
-							avgZ = avgZ / #strafeHist
-							targetVelocity = Vector3.new(avgX, smoothedVel.Y, avgZ)
-						else
-							targetVelocity = smoothedVel
-						end
-					else
-						local accel = Vector3.zero
-						if #hist >= 2 then
-							accel = hist[#hist] - hist[#hist - 1]
-						end
-						targetVelocity = rawVelocity + accel * (smoothedPing * 0.5)
-					end
-
+					local targetVelocity = targetBodyPart.Velocity
 					if CustomPrediction and CustomPrediction.Enabled then
 						local hMult = (HorizontalMultiplier and HorizontalMultiplier.Value or 100) / 100
 						local vMult = (VerticalMultiplier and VerticalMultiplier.Value or 100) / 100
@@ -8104,21 +8040,16 @@ run(function()
 							targetVelocity.Z * hMult
 						)
 					end
-
-					local pingOffset = targetVelocity * smoothedPing
-					local targetPos = targetBodyPart.Position + pingOffset
-
 					local bowRelX = bedwars.BowConstantsTable.RelX or 0
 					local bowRelY = bedwars.BowConstantsTable.RelY or 0
 					local bowRelZ = bedwars.BowConstantsTable.RelZ or 0
-					local newlook = CFrame.new(offsetpos, targetPos) *
+					local newlook = CFrame.new(offsetpos, targetBodyPart.Position) *
 						CFrame.new(projmeta.projectile == 'owl_projectile' and Vector3.zero or
 							Vector3.new(bowRelX, bowRelY, bowRelZ))
 
-					local activePrediction = (PAMode and PAMode.Value == 'Mafia') and mafiaprediction or prediction
-					local calc = activePrediction.SolveTrajectory(
+					local calc = prediction.SolveTrajectory(
 						newlook.p, projSpeed, gravity,
-						targetPos,
+						targetBodyPart.Position,
 						projmeta.projectile == 'telepearl' and Vector3.zero or targetVelocity,
 						playerGravity, plr.HipHeight, plr.Jumping and 42.6 or nil, rayCheck
 					)
@@ -8196,12 +8127,6 @@ run(function()
 		Tooltip = 'Prioritize targets when multiple are in range'
 	})
 
-	PAMode = ProjectileAimbot:CreateDropdown({
-		Name = 'Prediciton Mode',
-		List = {'Aero', 'Mafia'},
-		Default = 'Aero',
-	})
-
 	DesirePAWorkMode = ProjectileAimbot:CreateDropdown({
 		Name = 'PA Work Mode',
 		List = {'First Person', 'Third Person', 'Both'},
@@ -8274,12 +8199,9 @@ run(function()
 			if DesirePACursorShowGUI then DesirePACursorShowGUI.Object.Visible = callback end
 			if callback and ProjectileAimbot.Enabled then
 				if not cursorRenderConnection then
-					cursorRenderConnection = task.spawn(function()
-						while ProjectileAimbot.Enabled do
-							checkGUIState()
-							updateCursor()
-							task.wait(0.1)
-						end
+					cursorRenderConnection = runService.RenderStepped:Connect(function()
+						checkGUIState()
+						updateCursor()
 					end)
 				end
 				updateCursor()
@@ -8393,7 +8315,7 @@ run(function()
 		Min = 1,
 		Max = 100,
 		Default = 100,
-		Tooltip = 'Bow Charge %'
+		Tooltip = 'Bow/frost staff charge percentage (affects damage)'
 	})
 end)
 
