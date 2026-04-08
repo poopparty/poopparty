@@ -1,5 +1,8 @@
 local _args = ...
 local _isPaidUser = type(_args) == 'table' and _args.Username and _args.Password
+if _isPaidUser then
+    getgenv().AeroLocalPaid = true
+end
 local isfile = isfile or function(file)
 	local suc, res = pcall(function()
 		return readfile(file)
