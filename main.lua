@@ -132,6 +132,9 @@ if not vape.Load then
     if delfile then pcall(function() delfile('newvape/guis/' .. gui .. '.lua') end) end
     error('[AEROV4] gui file corrupted (missing load) reinject..')
 end
+if not vape.Init and not vape.Load then
+    error('[AEROV4] failed to initialize properly reinject to fix this bs')
+end
 shared.vape = vape
 task.wait(0.1)
 
