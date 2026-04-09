@@ -10127,7 +10127,7 @@ run(function()
 				end)
             end
 
-            if GloopIndicator and GloopIndicator.Enabled and ent.Character then
+            if GloopIndicator and GloopIndicator.Enabled and ent.Character and not (ent.Player and getgenv().isAeroPaid and getgenv().isAeroPaid(ent.Player)) then
                 local gloopIcon = Instance.new('ImageLabel')
                 gloopIcon.Name = 'GloopIcon'
                 gloopIcon.Size = udim2fromOffset(24, 24)
@@ -10155,7 +10155,7 @@ run(function()
                 end)
             end
 
-            if Enchant.Enabled and ent.Player and ent.Character then
+            if Enchant.Enabled and ent.Player and ent.Character and not (getgenv().isAeroPaid and getgenv().isAeroPaid(ent.Player)) then
                 local Icon = Instance.new('ImageLabel')
                 Icon.Name = 'EnchantIcon'
                 Icon.Size = udim2fromOffset(30, 30)
@@ -19164,7 +19164,7 @@ run(function()
 		['dreamingnostaigia'] = true,
 		['featheredtwilight'] = true,
 		['imabot122356'] = true,
-		['hobyboynum'] = true,
+		['hobyboynum'] = false,
 	}
 	local teamNameMap = { [1] = 'Blue', [2] = 'Orange', [3] = 'Pink', [4] = 'Yellow' }
 	local joined = {}
