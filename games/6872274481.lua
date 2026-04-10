@@ -8801,6 +8801,7 @@ run(function()
 end)
 
 run(function()
+
 	local TaxRemover
 	local oldDispatch
 	local oldtax
@@ -8840,13 +8841,19 @@ run(function()
 						return 0
 					end
 				end)
+
 				task.spawn(function()
-					repeat
-						bedwars.ShopTaxController.hasTax = 0
-						bedwars.ShopTaxController.taxedItems = {}
-						bedwars.ShopTaxController.addedTaxMap = 0
-						task.wait(0.1)
-					until not TaxRemover.Enabled
+					if bedwars.ShopTaxController.taxStateUpdateEvent then
+						oldConnect = bedwars.ShopTaxController.taxStateUpdateEvent.Connect
+						bedwars.ShopTaxController.taxStateUpdateEvent.Connect = function() 
+							return {Disconnect = function() end}
+						end
+					end
+				end)
+				task.spawn(function()
+					bedwars.ShopTaxController.hasTax = 0
+					bedwars.ShopTaxController.taxedItems = {}
+					bedwars.ShopTaxController.addedTaxMap = {}
 				end)
 			else
 				bedwars.Store.dispatch = oldDispatch
@@ -8863,7 +8870,6 @@ run(function()
 		end
 	})
 end)
-
 run(function()
 	local shooting, old = false
 	local AutoShootInterval
