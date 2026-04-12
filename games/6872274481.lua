@@ -3078,21 +3078,16 @@ run(function()
 					end))
 		
 					if inputService.TouchEnabled then
-						local mobileUI = lplr.PlayerGui:FindFirstChild('MobileUI')
-						if mobileUI then
-							for _, btn in mobileUI:GetChildren() do
-								if btn:IsA('ImageButton') or btn:IsA('TextButton') then
-									pcall(function()
-										AutoClicker:Clean(btn.MouseButton1Down:Connect(AutoClick))
-										AutoClicker:Clean(btn.MouseButton1Up:Connect(function()
-											if Thread then
-												task.cancel(Thread)
-												Thread = nil
-											end
-										end))
-									end)
-								end
-							end
+						for _, v in {'2', '5'} do
+							pcall(function()
+								AutoClicker:Clean(lplr.PlayerGui.MobileUI[v].MouseButton1Down:Connect(AutoClick))
+								AutoClicker:Clean(lplr.PlayerGui.MobileUI[v].MouseButton1Up:Connect(function()
+									if Thread then
+										task.cancel(Thread)
+										Thread = nil
+									end
+								end))
+							end)
 						end
 					end
 				else
@@ -3275,7 +3270,7 @@ run(function()
             end
         end)
     end
-end)
+end)  
 
 run(function()
     local KitRender
