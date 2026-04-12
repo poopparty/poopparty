@@ -1,3 +1,4 @@
+--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local mainapi = {
 	Categories = {},
 	GUIColor = {
@@ -8357,30 +8358,33 @@ guipane:CreateToggle({
 	Default = true,
 	Tooltip = 'Shows the button to change to Legit Mode'
 })
-guipane:CreateToggle({
-	Name = 'Show Mobile Button',
-	Function = function(callback)
-		if mainapi.VapeButton then
-			mainapi.VapeButton.BackgroundTransparency = callback and 0.5 or 1
-			for _, child in mainapi.VapeButton:GetChildren() do
-				if child:IsA('ImageLabel') then
-					child.ImageTransparency = callback and 0 or 1
+
+if inputService.TouchEnabled then
+	guipane:CreateToggle({
+		Name = 'Show Mobile Button',
+		Function = function(callback)
+			if mainapi.VapeButton then
+				mainapi.VapeButton.BackgroundTransparency = callback and 0.5 or 1
+				for _, child in mainapi.VapeButton:GetChildren() do
+					if child:IsA('ImageLabel') then
+						child.ImageTransparency = callback and 0 or 1
+					end
 				end
 			end
-		end
-		
-		if mainapi.Modules then
-			for _, mobileButton in pairs(mainapi.Modules) do
-				if mobileButton.Bind and mobileButton.Bind.Button then
-					mobileButton.Bind.Button.BackgroundTransparency = callback and 0.5 or 1
-					mobileButton.Bind.Button.TextTransparency = callback and 0 or 1
+			
+			if mainapi.Modules then
+				for _, mobileButton in pairs(mainapi.Modules) do
+					if mobileButton.Bind and mobileButton.Bind.Button then
+						mobileButton.Bind.Button.BackgroundTransparency = callback and 0.5 or 1
+						mobileButton.Bind.Button.TextTransparency = callback and 0 or 1
+					end
 				end
 			end
-		end
-	end,
-	Default = true,
-	Tooltip = 'Shows or hides mobile button (remains clickable when hidden)'
-})
+		end,
+		Default = true,
+		Tooltip = 'Shows or hides mobile button (remains clickable when hidden)'
+	})
+end
 
 guipane:CreateToggle({
     Name = 'Auto Reinject',
