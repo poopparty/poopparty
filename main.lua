@@ -69,6 +69,10 @@ end
 
 local function finishLoading()
 	vape.Init = nil
+	if not vape.Load then
+		warn('[AEROV4] vape.Load is nil skipping load')
+		return
+	end
 	vape:Load()
 	vape:Clean(task.spawn(function()
 		repeat
