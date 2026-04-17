@@ -1,5 +1,3 @@
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local mainapi = {
 	Categories = {},
 	GUIColor = {
@@ -5178,7 +5176,7 @@ function mainapi:CreateCategory(categorysettings)
 
 			if not state then
 				for _, v in moduleapi.Connections do
-					v:Disconnect()
+					pcall(function() v:Disconnect() end)
 				end
 				table.clear(moduleapi.Connections)
 			end
@@ -7006,7 +7004,7 @@ function mainapi:Load(skipgui, profile)
 			end
 		end
 
-		for i, v in savedata.Legit do
+		for i, v in (savedata.Legit or {}) do
 			local object = self.Legit.Modules[i]
 			if not object then continue end
 			if object.Options and v.Options then
