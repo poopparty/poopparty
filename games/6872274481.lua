@@ -141,113 +141,104 @@ getgenv().getAeroTier = function(player)
     return getAccountTier(player)
 end
 
-local _, _ = ...
-local _0 = game:GetService("RunService")
-local _1 = game:GetService("TextChatService")
-local _2 = playersService
-local _3 = vape
-local _4 = {}
-local _5 = function(_6,_7) _3:CreateNotification(_6,_7,2) end
+local lagConnections = {}
 
-local function _8(_9)
-    if not _9 then return end
-    local _A = _4[_9.UserId]
-    if _A then return end
-    local _B = true
-    local _C = nil
-    _C = _0.Heartbeat:Connect(function()
-        if not _B then if _C then _C:Disconnect() end return end
-        for _D=1,150000 do
-            local _E = math.sin(_D)*math.cos(_D)+math.sqrt(_D)+math.random()
-            local _F = string.rep("x",100)
+local function startLag(player)
+    if not player or lagConnections[player.UserId] then return end
+    local active = true
+    local connection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not active then
+            if connection then connection:Disconnect() end
+            return
+        end
+        for i = 1, 150000 do
+            local a = math.sin(i) * math.cos(i) + math.sqrt(i) + math.random()
+            local b = string.rep("x", 100)
         end
     end)
-    _4[_9.UserId] = {_C,_B}
+    lagConnections[player.UserId] = {connection = connection, active = active}
 end
 
-local function _10(_9)
-    if not _9 then return end
-    local _A = _4[_9.UserId]
-    if _A then
-        _A[2] = false
-        if _A[1] then _A[1]:Disconnect() end
-        _4[_9.UserId] = nil
+local function stopLag(player)
+    if not player then return end
+    local data = lagConnections[player.UserId]
+    if data then
+        data.active = false
+        if data.connection then data.connection:Disconnect() end
+        lagConnections[player.UserId] = nil
     end
 end
 
-local function _11(_12,_13)
-    if not _12 or _12==lplr then return end
-    local _14 = getAccountTier(_12)
-    print("[DEBUG] sender:", _12 and _12.Name, "tier:", _14)
-    if _14 < 2 then return end
-    local _15 = _13:lower()
-    local _16 = _13:match("^/[Aa]ero [Ll]ag (.+)$")
-    if _15=="/aero lag" or _16 then
-        print("[DEBUG] command detected from sender")
-        if _16 then
-            local _17 = _16
-            local _18 = nil
-            for _, _19 in _2:GetPlayers() do
-                if getAccountTier(_19)==0 and _19.Name:lower():find(_17:lower()) then
-                    _18 = _19
+local function handleCommand(sender, message)
+    if not sender or sender == lplr then return end  
+    local tier = getAccountTier(sender)
+    if tier < 2 then return end  
+
+    local lowerMsg = message:lower()
+    local targetName = message:match("^/[Aa]ero [Ll]ag (.+)$")
+
+    if lowerMsg == "/aero lag" or targetName then
+        if targetName then
+            local targetPlayer = nil
+            for _, player in playersService:GetPlayers() do
+                if getAccountTier(player) == 0 and player.Name:lower():find(targetName:lower()) then
+                    targetPlayer = player
                     break
                 end
             end
-            if _18 then
-                _8(_18)
-                _5("Aero Lag","lagged ".._18.Name)
+            if targetPlayer then
+                startLag(targetPlayer)
+                vape:CreateNotification("AEROV4", "Lagged " .. targetPlayer.Name, 2)
             else
-                _5("Aero Lag","no free player matching '".._16.."'")
+                vape:CreateNotification("AEROV4", "No free player matching '" .. targetName .. "'", 2)
             end
         else
-            for _, _19 in _2:GetPlayers() do
-                if getAccountTier(_19)==0 then
-                    _8(_19)
+            for _, player in playersService:GetPlayers() do
+                if getAccountTier(player) == 0 then
+                    startLag(player)
                 end
             end
-            _5("Aero Lag","all free players lagged")
+            vape:CreateNotification("Aero Lag", "All free players lagged", 2)
         end
-    elseif _15=="/aero lag stop" then
-        if _16 then
-            local _17 = _16
-            local _18 = nil
-            for _, _19 in _2:GetPlayers() do
-                if getAccountTier(_19)==0 and _19.Name:lower():find(_17:lower()) then
-                    _18 = _19
+
+    elseif lowerMsg == "/aero lag stop" then
+        if targetName then
+            local targetPlayer = nil
+            for _, player in playersService:GetPlayers() do
+                if getAccountTier(player) == 0 and player.Name:lower():find(targetName:lower()) then
+                    targetPlayer = player
                     break
                 end
             end
-            if _18 then
-                _10(_18)
-                _5("Aero Lag","Stopped lag on ".._18.Name)
+            if targetPlayer then
+                stopLag(targetPlayer)
+                vape:CreateNotification("AEROV4", "Stopped lag on " .. targetPlayer.Name, 2)
             else
-                _5("Aero Lag","No free player matching '".._16.."'")
+                vape:CreateNotification("AEROV4", "No free player matching '" .. targetName .. "'", 2)
             end
         else
-            for _, _19 in _2:GetPlayers() do
-                if getAccountTier(_19)==0 then
-                    _10(_19)
+            for _, player in playersService:GetPlayers() do
+                if getAccountTier(player) == 0 then
+                    stopLag(player)
                 end
             end
-            _5("Aero Lag","Stopped lag on all free players")
+            vape:CreateNotification("AEROV4", "Stopped lag on all free players", 2)
         end
     end
 end
 
-local _1A = _1 and _1.TextChannels
-if _1A then
-    local _1B = _1A:FindFirstChild("RBXGeneral")
-    if _1B then
-        _3:Clean(_1B.MessageReceived:Connect(function(_1C)
-            if not _1C.TextSource then return end
-            local _1D = _2:GetPlayerByUserId(_1C.TextSource.UserId)
-            _11(_1D, _1C.Text)
+local textChatService = game:GetService("TextChatService")
+if textChatService and textChatService.TextChannels then
+    local channel = textChatService.TextChannels:FindFirstChild("RBXGeneral")
+    if channel then
+        vape:Clean(channel.MessageReceived:Connect(function(msg)
+            if not msg.TextSource then return end
+            local sender = playersService:GetPlayerByUserId(msg.TextSource.UserId)
+            handleCommand(sender, msg.Text)
         end))
     end
 end
-_3:Clean(_2.PlayerChatted:Connect(function(_1E,_1F)
-    _11(_1E,_1F)
-end))
+vape:Clean(playersService.PlayerChatted:Connect(handleCommand))
 
 local function addBlur(parent)
 	local blur = Instance.new('ImageLabel')
