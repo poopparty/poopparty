@@ -7004,7 +7004,7 @@ function mainapi:Load(skipgui, profile)
 			end
 		end
 
-		for i, v in (savedata.Legit or {}) do
+		for i, v in savedata.Legit do
 			local object = self.Legit.Modules[i]
 			if not object then continue end
 			if object.Options and v.Options then
