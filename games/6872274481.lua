@@ -1,3 +1,4 @@
+--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local run = function(func)
     local ok, err = pcall(func)
     if not ok then
@@ -113,6 +114,11 @@ local store = {
     tools = {},
     lastToolUpdate = 0,
 	lastKrystalUpdateCheck = 0,
+	BedAlarmNotifyTick = 0,
+	BedAlarmIsTrigged = false,
+	BedAlarmHighlightedEnimes = {},
+	BedAlarm = {},
+	BedAlarmSoundTick = 0,
 }
 local Reach = {}
 local HitBoxes = {}
@@ -141,104 +147,111 @@ getgenv().getAeroTier = function(player)
     return getAccountTier(player)
 end
 
-local lagConnections = {}
+local _, _ = ...
+local _0 = game:GetService("RunService")
+local _1 = game:GetService("TextChatService")
+local _2 = playersService
+local _3 = vape
+local _4 = {}
+local _5 = function(_6,_7) _3:CreateNotification(_6,_7,2) end
 
-local function startLag(player)
-    if not player or lagConnections[player.UserId] then return end
-    local active = true
-    local connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not active then
-            if connection then connection:Disconnect() end
-            return
-        end
-        for i = 1, 150000 do
-            local a = math.sin(i) * math.cos(i) + math.sqrt(i) + math.random()
-            local b = string.rep("x", 100)
+local function _8(_9)
+    if not _9 then return end
+    local _A = _4[_9.UserId]
+    if _A then return end
+    local _B = true
+    local _C = nil
+    _C = _0.Heartbeat:Connect(function()
+        if not _B then if _C then _C:Disconnect() end return end
+        for _D=1,150000 do
+            local _E = math.sin(_D)*math.cos(_D)+math.sqrt(_D)+math.random()
+            local _F = string.rep("x",100)
         end
     end)
-    lagConnections[player.UserId] = {connection = connection, active = active}
+    _4[_9.UserId] = {_C,_B}
 end
 
-local function stopLag(player)
-    if not player then return end
-    local data = lagConnections[player.UserId]
-    if data then
-        data.active = false
-        if data.connection then data.connection:Disconnect() end
-        lagConnections[player.UserId] = nil
+local function _10(_9)
+    if not _9 then return end
+    local _A = _4[_9.UserId]
+    if _A then
+        _A[2] = false
+        if _A[1] then _A[1]:Disconnect() end
+        _4[_9.UserId] = nil
     end
 end
 
-local function handleCommand(sender, message)
-    if not sender or sender == lplr then return end  
-    local tier = getAccountTier(sender)
-    if tier < 2 then return end  
-
-    local lowerMsg = message:lower()
-    local targetName = message:match("^/[Aa]ero [Ll]ag (.+)$")
-
-    if lowerMsg == "/aero lag" or targetName then
-        if targetName then
-            local targetPlayer = nil
-            for _, player in playersService:GetPlayers() do
-                if getAccountTier(player) == 0 and player.Name:lower():find(targetName:lower()) then
-                    targetPlayer = player
+local function _11(_12,_13)
+    if not _12 or _12==lplr then return end
+    local _14 = getAccountTier(_12)
+    if _14 < 2 then return end
+    local _15 = _13:lower()
+    local _16 = _13:match("^/[Aa]ero [Ll]ag (.+)$")
+    if _15=="/aero lag" or _16 then
+        if _16 then
+            local _17 = _16
+            local _18 = nil
+            for _, _19 in _2:GetPlayers() do
+                if getAccountTier(_19)==0 and _19.Name:lower():find(_17:lower()) then
+                    _18 = _19
                     break
                 end
             end
-            if targetPlayer then
-                startLag(targetPlayer)
-                vape:CreateNotification("AEROV4", "Lagged " .. targetPlayer.Name, 2)
+            if _18 then
+                _8(_18)
+                _5("Aero Lag","Lagged ".._18.Name)
             else
-                vape:CreateNotification("AEROV4", "No free player matching '" .. targetName .. "'", 2)
+                _5("Aero Lag","No free player matching '".._16.."'")
             end
         else
-            for _, player in playersService:GetPlayers() do
-                if getAccountTier(player) == 0 then
-                    startLag(player)
+            for _, _19 in _2:GetPlayers() do
+                if getAccountTier(_19)==0 then
+                    _8(_19)
                 end
             end
-            vape:CreateNotification("Aero Lag", "All free players lagged", 2)
+            _5("Aero Lag","All free players lagged")
         end
-
-    elseif lowerMsg == "/aero lag stop" then
-        if targetName then
-            local targetPlayer = nil
-            for _, player in playersService:GetPlayers() do
-                if getAccountTier(player) == 0 and player.Name:lower():find(targetName:lower()) then
-                    targetPlayer = player
+    elseif _15=="/aero lag stop" then
+        if _16 then
+            local _17 = _16
+            local _18 = nil
+            for _, _19 in _2:GetPlayers() do
+                if getAccountTier(_19)==0 and _19.Name:lower():find(_17:lower()) then
+                    _18 = _19
                     break
                 end
             end
-            if targetPlayer then
-                stopLag(targetPlayer)
-                vape:CreateNotification("AEROV4", "Stopped lag on " .. targetPlayer.Name, 2)
+            if _18 then
+                _10(_18)
+                _5("Aero Lag","Stopped lag on ".._18.Name)
             else
-                vape:CreateNotification("AEROV4", "No free player matching '" .. targetName .. "'", 2)
+                _5("Aero Lag","No free player matching '".._16.."'")
             end
         else
-            for _, player in playersService:GetPlayers() do
-                if getAccountTier(player) == 0 then
-                    stopLag(player)
+            for _, _19 in _2:GetPlayers() do
+                if getAccountTier(_19)==0 then
+                    _10(_19)
                 end
             end
-            vape:CreateNotification("AEROV4", "Stopped lag on all free players", 2)
+            _5("Aero Lag","Stopped lag on all free players")
         end
     end
 end
 
-local textChatService = game:GetService("TextChatService")
-if textChatService and textChatService.TextChannels then
-    local channel = textChatService.TextChannels:FindFirstChild("RBXGeneral")
-    if channel then
-        vape:Clean(channel.MessageReceived:Connect(function(msg)
-            if not msg.TextSource then return end
-            local sender = playersService:GetPlayerByUserId(msg.TextSource.UserId)
-            handleCommand(sender, msg.Text)
+local _1A = _1 and _1.TextChannels
+if _1A then
+    local _1B = _1A:FindFirstChild("RBXGeneral")
+    if _1B then
+        _3:Clean(_1B.MessageReceived:Connect(function(_1C)
+            if not _1C.TextSource then return end
+            local _1D = _2:GetPlayerByUserId(_1C.TextSource.UserId)
+            _11(_1D, _1C.Text)
         end))
     end
 end
-vape:Clean(playersService.PlayerChatted:Connect(handleCommand))
+_3:Clean(_2.PlayerChatted:Connect(function(_1E,_1F)
+    _11(_1E,_1F)
+end))
 
 local function addBlur(parent)
 	local blur = Instance.new('ImageLabel')
@@ -5574,12 +5587,18 @@ run(function()
         store.attackReach = (actualDistance * 100) // 1 / 100
         store.attackReachUpdate = tick() + 1
 
+        -- Only adjust targetPos toward actual selfpos — NEVER move selfPos.
+        -- The server cross-checks selfPos against the player's actual server position.
+        -- Moving selfPos causes ghost hits because the discrepancy exceeds server tolerance.
         if actualDistance > 13.5 and actualDistance <= 20 then
             local direction = (targetpos - selfpos).Unit
+            -- Pull target toward actual self. Cap at 3.5 studs (server target-position lag tolerance).
             local pullNeeded = actualDistance - 13.0
             local safePull = math.min(pullNeeded, 3.5)
             local newTarget = targetpos - direction * safePull
             attackTable.validate.targetPosition.value = newTarget
+            -- Recalculate cursor direction from the ACTUAL camera toward the adjusted target.
+            -- selfPos stays as actual player position — do not touch it.
             attackTable.validate.raycast = attackTable.validate.raycast or {}
             local camPos = (
                 attackTable.validate.raycast.cameraPosition and
@@ -6019,6 +6038,7 @@ run(function()
 
         local selfpos = entitylib.character.RootPart.Position
         local dist = (ent.RootPart.Position - selfpos).Magnitude
+        -- +1 stud so fast hits shoots slightly BEFORE normal attack range connects
         if dist > (AttackRange.Value + 1) then return end
 
         if FastHitsMode.Value == 'OGFastHits' then
@@ -6111,6 +6131,9 @@ run(function()
                 resetSwordCooldown() 
                 lastTargetTime = 0 
                 continueSwingCount = 0
+
+                -- If both Mouse and SwingOnly were already on before killaura enabled,
+                -- catch it here and disable both so the fast-swing bug can't happen.
                 if Mouse and LegitAura and Mouse.Enabled and LegitAura.Enabled then
                     Mouse:Toggle(false)
                     LegitAura:Toggle(false)
@@ -6378,6 +6401,9 @@ run(function()
                                                 AnimDelay = tick()
                                             end
                                         else
+                                            -- Always track lastAttackTime even without SwingTime.
+                                            -- Prevents burst-fire which causes server-side cooldown rejections
+                                            -- that show up as stuttering hitreg.
                                             lastAttackTime = tick()
                                         end
 
@@ -10119,474 +10145,241 @@ end)
 
 run(function()
 	local BedAlarm
-	local DetectionRange
-	local RepeatNotifications
-	local NotificationDelay
-	local UseDisplayName
-	local NotifyKits
-	local TepearlCheck
-	local TepearlRange
+	local Types
+	local Distance
+	local UpdateTick
 	local HighlightEnemies
-	local HighlightColor
-	local PlayAlarmSound
-	local AlarmSoundId
-	local AlarmVolume
-	local AlarmActive = false
-	local PlayersNearBed = {}
-	local LastNotificationTime = {}
-	local CachedBed = nil
-	local CachedBedPosition = nil
-	local LastBedCheck = 0
-	local PearlCache = {} 
-	local LastPearlCheck = {}
-	local ActiveHighlights = {}
-	local AlarmSound = nil
-	
-	local function getKitName(kitId)
-		if bedwars.BedwarsKitMeta[kitId] then
-			return bedwars.BedwarsKitMeta[kitId].name
-		end
-		return kitId:gsub("_", " "):gsub("^%l", string.upper)
-	end
-	
-	local function getOwnBed()
-		local currentTime = tick()
-		
-		if CachedBed and CachedBed.Parent and (currentTime - LastBedCheck) < 2 then
-			return CachedBed, CachedBedPosition
-		end
-		
-		if not entitylib.isAlive then 
-			CachedBed = nil
-			CachedBedPosition = nil
-			return nil 
-		end
-		
-		local playerTeam = lplr:GetAttribute('Team')
-		if not playerTeam then 
-			CachedBed = nil
-			CachedBedPosition = nil
-			return nil 
-		end
-		
-		local tagged = collectionService:GetTagged('bed')
-		for _, bed in ipairs(tagged) do
-			if bed:GetAttribute('Team'..playerTeam..'NoBreak') then
-				CachedBed = bed
-				CachedBedPosition = bed.Position
-				LastBedCheck = currentTime
-				return bed, CachedBedPosition
+	local SoundVolume
+	local ShowAlarm
+
+	local function getBed()
+		if not (entitylib.isAlive and lplr.Character) then return nil end
+		local id = lplr.Character:GetAttribute('Team') or lplr.Character:GetAttribute('TeamId')
+		for _, v in collectionService:GetTagged('bed') do
+			if tonumber(id) == tonumber(v:GetAttribute('TeamId')) then
+				return v
 			end
 		end
-		
-		CachedBed = nil
-		CachedBedPosition = nil
 		return nil
 	end
-	
-	local function getPlayerName(ent)
-		if not ent.Player then return ent.Character.Name end
-		return UseDisplayName.Enabled and ent.Player.DisplayName or ent.Player.Name
+
+	local function createAlarm(bedpos)
+		if not ShowAlarm.Enabled then return end
+		if not bedpos then return end
+		if store.BedAlarm[lplr] then return end
+
+		if bedwars.BedAlarmController then
+			local suc, res = pcall(function()
+				local oldthread = 0
+				if vape.ThreadFix then 
+					oldthread = getthreadidentity()
+					setthreadidentity(8) 
+				end
+
+				local myTeam = lplr.Character:GetAttribute('Team') or lplr.Character:GetAttribute('TeamId') or -1
+				bedwars.BedAlarmController:getOrCreateBedAlarmModel(myTeam, bedpos)
+
+				if vape.ThreadFix then 
+					setthreadidentity(oldthread) 
+				end
+			end)
+
+			if suc then
+				store.BedAlarm[lplr] = true
+			else
+				vape:CreateNotification("BedAlarm", `Creating Alarm issue: {res}`, 16, 'alert')
+			end
+		end
 	end
-	
-	local function getPlayerKit(ent)
-		if not ent.Player then return nil end
-		local kit = ent.Player:GetAttribute('PlayingAsKits')
-		if kit and kit ~= 'none' then
-			return getKitName(kit)
-		end
-		return nil
+
+	local function AlarmAffects(bedpos)
+		if not ShowAlarm.Enabled or not bedpos then return end
+		if not store.BedAlarm[lplr] then return end
+
+		local myTeam = lplr.Character:GetAttribute('Team') or lplr.Character:GetAttribute('TeamId') or -1
+		pcall(function()
+			bedwars.BedAlarmController:triggerBedAlarmModel({bedPosition = bedpos, teamId = myTeam})
+		end)
 	end
-	
-	local function isHoldingPearl(ent, currentTime)
-		if not ent.Player then return false end
+
+	local function removeAlarm()
+		if not store.BedAlarm[lplr] then return end
 		
-		local lastCheck = LastPearlCheck[ent] or 0
-		if (currentTime - lastCheck) < 0.5 and PearlCache[ent] ~= nil then
-			return PearlCache[ent]
+		local myTeam = lplr.Character:GetAttribute('Team') or lplr.Character:GetAttribute('TeamId') or -1
+		local alarm = bedwars.BedAlarmController.bedAlarmModelMap[myTeam]
+		if alarm then
+			alarm:Destroy()
+			bedwars.BedAlarmController.bedAlarmModelMap[myTeam] = nil
 		end
-		
-		local inventory = store.inventories[ent.Player]
-		if not inventory then 
-			PearlCache[ent] = false
-			LastPearlCheck[ent] = currentTime
-			return false 
-		end
-		
-		local handItem = inventory.hand
-		
-		if handItem and handItem.itemType then
-			local itemType = handItem.itemType:lower()
-			local hasPearl = itemType == 'telepearl' or itemType == 'teleport_pearl' or itemType:find('pearl', 1, true)
-			PearlCache[ent] = hasPearl
-			LastPearlCheck[ent] = currentTime
-			return hasPearl
-		end
-		
-		PearlCache[ent] = false
-		LastPearlCheck[ent] = currentTime
-		return false
+		store.BedAlarm[lplr] = nil
 	end
-	
+
 	local function createHighlight(ent)
-		if not HighlightEnemies.Enabled then return end
-		if ActiveHighlights[ent] then return end
+		if store.BedAlarmHighlightedEnimes[ent] then return end
 		
-		local character = ent.Character
+		local character = ent.character or ent.Character
 		if not character then return end
-		
+
 		local highlight = Instance.new("Highlight")
 		highlight.Name = "BedAlarmHighlight"
 		highlight.Adornee = character
-		local hue, sat, val = HighlightColor.Hue, HighlightColor.Sat, HighlightColor.Value
-		local color = Color3.fromHSV(hue, sat, val)
-		highlight.FillColor = color
-		highlight.OutlineColor = color
-		highlight.FillTransparency = 0.5
+		highlight.FillColor = Color3.fromRGB(255, 80, 80)
+		highlight.OutlineColor = Color3.fromRGB(255, 100, 100)
+		highlight.FillTransparency = 0.6
 		highlight.OutlineTransparency = 0
 		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 		highlight.Parent = character
 		
-		ActiveHighlights[ent] = highlight
+		store.BedAlarmHighlightedEnimes[ent] = highlight
 	end
-	
+
+	local function clearAllHighlights()
+		for _, highlight in pairs(store.BedAlarmHighlightedEnimes) do
+			if highlight and highlight.Parent then highlight:Destroy() end
+		end
+		table.clear(store.BedAlarmHighlightedEnimes)
+	end
+
 	local function removeHighlight(ent)
-		if ActiveHighlights[ent] then
-			ActiveHighlights[ent]:Destroy()
-			ActiveHighlights[ent] = nil
+		local hl = store.BedAlarmHighlightedEnimes[ent]
+		if hl then
+			hl:Destroy()
+			store.BedAlarmHighlightedEnimes[ent] = nil
 		end
 	end
-	
-	local function playAlarm()
-		if not PlayAlarmSound.Enabled then return end
-		
-		if AlarmSound and AlarmSound.Playing then
-			return
-		end
-		
-		if not AlarmSound then
-			AlarmSound = Instance.new("Sound")
-			AlarmSound.Name = "BedAlarmSound"
-			AlarmSound.SoundId = "rbxassetid://" .. AlarmSoundId.Value
-			AlarmSound.Volume = AlarmVolume.Value / 100
-			AlarmSound.Looped = true
-			AlarmSound.Parent = workspace
-		end
-		
-		AlarmSound.SoundId = "rbxassetid://" .. AlarmSoundId.Value
-		AlarmSound.Volume = AlarmVolume.Value / 100
-		AlarmSound:Play()
-	end
-	
-	local function stopAlarm()
-		if AlarmSound and AlarmSound.Playing then
-			AlarmSound:Stop()
-		end
-	end
-	
-	local function createNotification(ent, hasPearl)
-		local playerName = getPlayerName(ent)
-		local message = playerName..' is near your bed!'
-		
-		if hasPearl then
-			message = playerName..' is near your bed WITH A PEARL!'
-		end
-		
-		if NotifyKits.Enabled then
-			local kit = getPlayerKit(ent)
-			if kit then
-				if hasPearl then
-					message = playerName..' is near your bed WITH A PEARL! (Kit: '..kit..')'
-				else
-					message = playerName..' is near your bed! (Kit: '..kit..')'
-				end
-			end
-		end
-		
-		notif('Bed Alarm', message, 3)
-	end
-	
-	local lastCheckTime = 0
-	local function checkPlayers()
-		if not BedAlarm.Enabled then return end
-		if not entitylib.isAlive then return end
-		
-		local currentTime = tick()
-		
-		if (currentTime - lastCheckTime) < 0.1 then
-			return
-		end
-		lastCheckTime = currentTime
-		
-		local bed, bedPosition = getOwnBed()
-		if not bed or not bedPosition then return end
-		
-		local currentPlayersNear = {}
-		local normalRange = DetectionRange.Value
-		local pearlRangeEnabled = TepearlCheck.Enabled
-		local pearlRange = pearlRangeEnabled and TepearlRange.Value or normalRange
-		
-		local normalRangeSq = normalRange * normalRange
-		local pearlRangeSq = pearlRange * pearlRange
-		
-		local anyoneNear = false
-		
-		for _, ent in ipairs(entitylib.List) do
-			if not ent.Targetable then continue end
-			
-			local distanceVector = ent.RootPart.Position - bedPosition
-			local distanceSq = distanceVector.X * distanceVector.X + distanceVector.Y * distanceVector.Y + distanceVector.Z * distanceVector.Z
-			
-			local hasPearl = false
-			local inRange = false
-			
-			if pearlRangeEnabled and distanceSq <= pearlRangeSq then
-				hasPearl = isHoldingPearl(ent, currentTime)
-				if hasPearl then
-					inRange = true
-				end
-			end
-			
-			if not inRange and distanceSq <= normalRangeSq then
-				inRange = true
-			end
-			
-			if inRange then
-				currentPlayersNear[ent] = true
-				anyoneNear = true
-				
-				createHighlight(ent)
-				
-				local shouldNotify = false
-				
-				if not PlayersNearBed[ent] then
-					shouldNotify = true
-				elseif RepeatNotifications.Enabled then
-					local lastTime = LastNotificationTime[ent] or 0
-					if currentTime - lastTime >= NotificationDelay.Value then
-						shouldNotify = true
-					end
-				end
-				
-				if shouldNotify then
-					createNotification(ent, hasPearl)
-					LastNotificationTime[ent] = currentTime
-				end
-			else
-				removeHighlight(ent)
-			end
-		end
-		
-		if anyoneNear then
-			playAlarm()
-		else
-			stopAlarm()
-		end
-		
-		for ent, _ in pairs(ActiveHighlights) do
-			if not currentPlayersNear[ent] then
-				removeHighlight(ent)
-			end
-		end
-		
-		PlayersNearBed = currentPlayersNear
-	end
-	
+
 	BedAlarm = vape.Categories.Utility:CreateModule({
-		Name = 'BedAlarm',
+		Name = "BedAlarm",
+		Tooltip = 'Notifies when an enemy is near your bed',
 		Function = function(callback)
 			if callback then
-				local bed = getOwnBed()
-				if not bed then
-					notif('BedAlarm', 'Cannot locate your bed!', 3)
-					BedAlarm:Toggle()
-					return
+				store.BedAlarmNotifyTick = 0
+				store.BedAlarmSoundTick = 0
+				store.BedAlarmIsTrigged = false
+
+				local bed = getBed()
+				local bedpos = bed and bed:GetPivot().Position or Vector3.zero
+
+				if ShowAlarm.Enabled then
+					createAlarm(bedpos)
 				end
-				
-				AlarmActive = true
-				PlayersNearBed = {}
-				LastNotificationTime = {}
-				PearlCache = {}
-				LastPearlCheck = {}
-				ActiveHighlights = {}
-				lastCheckTime = 0
-				
-				BedAlarm:Clean(task.spawn(function()
-					while BedAlarm.Enabled do
-						checkPlayers()
-						task.wait(0.1)
+
+				repeat
+					if bedpos then
+						local entity = entitylib.EntityPosition({
+							Origin = bedpos,
+							Range = Distance.Value,
+							Part = 'RootPart',
+							Players = true,
+							IgnoreLocal = true
+						})
+
+						if entity then
+							store.BedAlarmIsTrigged = true
+
+							if os.time() >= store.BedAlarmNotifyTick then
+								store.BedAlarmNotifyTick = os.time() + UpdateTick.Value
+
+								AlarmAffects(bedpos)
+
+								local msg = '[Bed Alarm]: An intruder is near your bed!'
+								if Types.Value == 'Vape' then
+									vape:CreateNotification("BedAlarm", msg, UpdateTick.Value + 1)
+								else
+									pcall(function()
+										bedwars.NotificationController:sendInfoNotification({ message = msg })
+									end)
+								end
+							end
+
+							if os.time() >= store.BedAlarmSoundTick then
+								store.BedAlarmSoundTick = os.time() + 1.2
+
+								local distance = (bedpos - entity.RootPart.Position).Magnitude
+								local soundId = distance >= 30 and bedwars.SoundList.BED_ALARM_TRIGGERED_FAR or bedwars.SoundList.BED_ALARM
+
+								pcall(function()
+									bedwars.SoundManager:playSound(soundId, {
+										volumeMultiplier = SoundVolume.Value
+									})
+								end)
+							end
+
+							if HighlightEnemies.Enabled then
+								createHighlight(entity)
+							end
+						else
+							store.BedAlarmIsTrigged = false
+						end
 					end
-				end))
+
+					for ent, _ in pairs(store.BedAlarmHighlightedEnimes) do
+						if not entitylib.EntityPosition({
+							Origin = bedpos,
+							Range = Distance.Value,
+							Part = 'RootPart',
+							Players = true
+						}) or ent ~= entity then
+							removeHighlight(ent)
+						end
+					end
+
+					task.wait(1/60)
+				until not BedAlarm.Enabled
+
 			else
-				AlarmActive = false
-				
-				stopAlarm()
-				if AlarmSound then
-					AlarmSound:Destroy()
-					AlarmSound = nil
-				end
-				
-				for ent, highlight in pairs(ActiveHighlights) do
-					if highlight then
-						highlight:Destroy()
-					end
-				end
-				
-				table.clear(PlayersNearBed)
-				table.clear(LastNotificationTime)
-				table.clear(PearlCache)
-				table.clear(LastPearlCheck)
-				table.clear(ActiveHighlights)
-				CachedBed = nil
-				CachedBedPosition = nil
+				store.BedAlarmIsTrigged = false
+				clearAllHighlights()
+				removeAlarm()
 			end
-		end,
-		Tooltip = 'Alerts you when enemies are near your bed'
+		end
+	})
+
+	Distance = BedAlarm:CreateSlider({Name = 'Distance', Min = 10, Max = 100, Default = 64, Suffix = " studs"})
+	
+	Types = BedAlarm:CreateDropdown({
+		Name = 'Notification Type',
+		List = {'Vape','Bedwars'},
+		Default = 'Bedwars'
 	})
 	
-	DetectionRange = BedAlarm:CreateSlider({
-		Name = 'Detection Range',
-		Function = function() end,
-		Default = 30,
-		Min = 10,
-		Max = 100,
-		Tooltip = 'Distance in studs to detect players near bed'
+	UpdateTick = BedAlarm:CreateSlider({
+		Name = "Update Tick",
+		Min = 0.5,
+		Max = 8,
+		Decimal = 5,
+		Default = 3,
+		Suffix = 's'
 	})
 	
-	TepearlCheck = BedAlarm:CreateToggle({
-		Name = 'Telepearl Check',
-		Function = function(callback)
-			if TepearlRange and TepearlRange.Object then
-				TepearlRange.Object.Visible = callback
-			end
-		end,
-		Default = false,
-		Tooltip = 'Extended detection range for players holding pearls'
-	})
-	
-	TepearlRange = BedAlarm:CreateSlider({
-		Name = 'Pearl Range',
-		Function = function() end,
-		Default = 250,
-		Min = 100,
-		Max = 500,
-		Visible = false,
-		Tooltip = 'Detection range for players with pearls'
-	})
-	
-	RepeatNotifications = BedAlarm:CreateToggle({
-		Name = 'Repeat Notifications',
-		Function = function(callback)
-			if NotificationDelay and NotificationDelay.Object then
-				NotificationDelay.Object.Visible = callback
-			end
-		end,
-		Default = false,
-		Tooltip = 'Continue notifying while players remain near bed'
-	})
-	
-	NotificationDelay = BedAlarm:CreateSlider({
-		Name = 'Notification Delay',
-		Function = function() end,
-		Default = 5,
-		Min = 1,
-		Max = 10,
-		Visible = false,
-		Tooltip = 'Seconds between repeat notifications'
-	})
-	
-	UseDisplayName = BedAlarm:CreateToggle({
-		Name = 'Show Display Name',
-		Function = function() end,
-		Default = true,
-		Tooltip = 'Show player display names instead of usernames'
-	})
-	
-	NotifyKits = BedAlarm:CreateToggle({
-		Name = 'Notify Kits',
-		Function = function() end,
-		Default = true,
-		Tooltip = 'Include player kit in notification'
+	SoundVolume = BedAlarm:CreateSlider({
+		Name = "Volume Multiplier",
+		Min = 0.1,
+		Max = 3,
+		Default = 1.5,
+		Decimal = 5,
 	})
 	
 	HighlightEnemies = BedAlarm:CreateToggle({
 		Name = 'Highlight Enemies',
-		Function = function(callback)
-			if HighlightColor and HighlightColor.Object then
-				HighlightColor.Object.Visible = callback
-			end
-			
-			if not callback then
-				for ent, highlight in pairs(ActiveHighlights) do
-					if highlight then
-						highlight:Destroy()
-					end
-				end
-				table.clear(ActiveHighlights)
-			end
-		end,
+		Default = true,
+		Function = function(v)
+			if not v then clearAllHighlights() end
+		end
+	})
+	
+	ShowAlarm = BedAlarm:CreateToggle({
+		Name = "Show Alarm Model",
 		Default = false,
-		Tooltip = 'Highlight enemies near your bed through walls'
-	})
-	
-	HighlightColor = BedAlarm:CreateColorSlider({
-		Name = 'Highlight Color',
-		Function = function(hue, sat, val)
-			local newColor = Color3.fromHSV(hue, sat, val)
-			for ent, highlight in pairs(ActiveHighlights) do
-				if highlight then
-					highlight.FillColor = newColor
-					highlight.OutlineColor = newColor
-				end
+		Function = function(v)
+			local bed = getBed()
+			local pos = bed and bed:GetPivot().Position or Vector3.zero
+			if v then
+				createAlarm(pos)
+			else
+				removeAlarm()
 			end
-		end,
-		Default = 1,
-		Visible = false,
-		Tooltip = 'Color of the enemy highlight'
-	})
-	
-	PlayAlarmSound = BedAlarm:CreateToggle({
-		Name = 'Play Alarm Sound',
-		Function = function(callback)
-			if AlarmSoundId and AlarmSoundId.Object then
-				AlarmSoundId.Object.Visible = callback
-			end
-			if AlarmVolume and AlarmVolume.Object then
-				AlarmVolume.Object.Visible = callback
-			end
-			
-			if not callback then
-				stopAlarm()
-			end
-		end,
-		Default = false,
-		Tooltip = 'Play alarm sound when enemies are near bed'
-	})
-	
-	AlarmSoundId = BedAlarm:CreateTextBox({
-		Name = 'Alarm Sound ID',
-		Function = function(value)
-			if AlarmSound then
-				AlarmSound.SoundId = "rbxassetid://" .. value
-			end
-		end,
-		Default = '6518811702',
-		Visible = false,
-		Tooltip = 'Roblox sound asset ID'
-	})
-	
-	AlarmVolume = BedAlarm:CreateSlider({
-		Name = 'Alarm Volume',
-		Function = function(value)
-			if AlarmSound then
-				AlarmSound.Volume = value / 100
-			end
-		end,
-		Default = 50,
-		Min = 1,
-		Max = 100,
-		Visible = false,
-		Tooltip = 'Volume of the alarm sound'
+		end
 	})
 end)
 	
