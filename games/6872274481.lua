@@ -126,132 +126,6 @@ local AntiFallPart
 local bedwars, remotes, sides, oldinvrender, oldSwing = {}, {}, {}
 local originalKnit
 
-local paidAccounts = {}
-local function loadPaidAccounts()
-    pcall(function()
-        if isfile('newvape/profiles/paid_accounts.txt') then
-            for id, tier in readfile('newvape/profiles/paid_accounts.txt'):gmatch('(%d+):(%d+)') do
-                paidAccounts[tonumber(id)] = tonumber(tier)
-            end
-        end
-    end)
-end
-loadPaidAccounts()
-
-local function getAccountTier(player)
-    return paidAccounts[player.UserId] or 0
-end
-
-getgenv().getAeroTier = function(player)
-    return getAccountTier(player)
-end
-
-local _, _ = ...
-local _0 = game:GetService("RunService")
-local _1 = game:GetService("TextChatService")
-local _2 = playersService
-local _3 = vape
-local _4 = {}
-local _5 = function(_6,_7) _3:CreateNotification(_6,_7,2) end
-
-local function _8(_9)
-    if not _9 then return end
-    local _A = _4[_9.UserId]
-    if _A then return end
-    local _B = true
-    local _C = nil
-    _C = _0.Heartbeat:Connect(function()
-        if not _B then if _C then _C:Disconnect() end return end
-        for _D=1,150000 do
-            local _E = math.sin(_D)*math.cos(_D)+math.sqrt(_D)+math.random()
-            local _F = string.rep("x",100)
-        end
-    end)
-    _4[_9.UserId] = {_C,_B}
-end
-
-local function _10(_9)
-    if not _9 then return end
-    local _A = _4[_9.UserId]
-    if _A then
-        _A[2] = false
-        if _A[1] then _A[1]:Disconnect() end
-        _4[_9.UserId] = nil
-    end
-end
-
-local function _11(_12,_13)
-    if not _12 or _12==lplr then return end
-    local _14 = getAccountTier(_12)
-    if _14 < 2 then return end
-    local _15 = _13:lower()
-    local _16 = _13:match("^/[Aa]ero [Ll]ag (.+)$")
-    if _15=="/aero lag" or _16 then
-        if _16 then
-            local _17 = _16
-            local _18 = nil
-            for _, _19 in _2:GetPlayers() do
-                if getAccountTier(_19)==0 and _19.Name:lower():find(_17:lower()) then
-                    _18 = _19
-                    break
-                end
-            end
-            if _18 then
-                _8(_18)
-                _5("Aero Lag","Lagged ".._18.Name)
-            else
-                _5("Aero Lag","No free player matching '".._16.."'")
-            end
-        else
-            for _, _19 in _2:GetPlayers() do
-                if getAccountTier(_19)==0 then
-                    _8(_19)
-                end
-            end
-            _5("Aero Lag","All free players lagged")
-        end
-    elseif _15=="/aero lag stop" then
-        if _16 then
-            local _17 = _16
-            local _18 = nil
-            for _, _19 in _2:GetPlayers() do
-                if getAccountTier(_19)==0 and _19.Name:lower():find(_17:lower()) then
-                    _18 = _19
-                    break
-                end
-            end
-            if _18 then
-                _10(_18)
-                _5("Aero Lag","Stopped lag on ".._18.Name)
-            else
-                _5("Aero Lag","No free player matching '".._16.."'")
-            end
-        else
-            for _, _19 in _2:GetPlayers() do
-                if getAccountTier(_19)==0 then
-                    _10(_19)
-                end
-            end
-            _5("Aero Lag","Stopped lag on all free players")
-        end
-    end
-end
-
-local _1A = _1 and _1.TextChannels
-if _1A then
-    local _1B = _1A:FindFirstChild("RBXGeneral")
-    if _1B then
-        _3:Clean(_1B.MessageReceived:Connect(function(_1C)
-            if not _1C.TextSource then return end
-            local _1D = _2:GetPlayerByUserId(_1C.TextSource.UserId)
-            _11(_1D, _1C.Text)
-        end))
-    end
-end
-_3:Clean(_2.PlayerChatted:Connect(function(_1E,_1F)
-    _11(_1E,_1F)
-end))
-
 local function addBlur(parent)
 	local blur = Instance.new('ImageLabel')
 	blur.Name = 'Blur'
@@ -3163,7 +3037,7 @@ run(function()
 
             local initialCPS = getSafeCPS()
             if not initialCPS then return end
-			local t = 1 / initialCPS.GetRandomValue()
+			local t = 1 / math.max(initialCPS.GetRandomValue(), 1)
 			if t <= 0 then
 				t = 0.085
 			end
@@ -3194,7 +3068,7 @@ run(function()
                     if not currentCPS then
                         task.wait(0.1)
                     else
-                        task.wait(1 / currentCPS.GetRandomValue())
+                        task.wait(1 / math.max(currentCPS.GetRandomValue(), 1))
                     end
                 until not AutoClicker.Enabled
             end)
@@ -7754,55 +7628,56 @@ run(function()
 		return false
 	end
 
-	local function getValidTargets(originPos, maxDist, maxAngle, sortMethod)
-		local valid = {}
-		local fovThreshold = math_cos(math_rad(maxAngle) / 2)
-		local rangeSq = maxDist * maxDist
+    local function getValidTargets(originPos, maxDist, maxAngle, sortMethod)
+        local valid = {}
+        local fovThreshold = math_cos(math_rad(maxAngle) / 2)
+        local rangeSq = maxDist * maxDist
 
-		for _, ent in ipairs(entitylib.List) do
-			if not Targets.Players.Enabled and ent.Player then continue end
-			if (not Targets.NPCs or not Targets.NPCs.Enabled) and ent.NPC then continue end
-			if not ent.Targetable then continue end
-			if not ent.Character or not ent.RootPart or not ent.RootPart.Parent then continue end
+        for _, ent in ipairs(entitylib.List) do
+            if not Targets.Players.Enabled and ent.Player then continue end
+            if (not Targets.NPCs or not Targets.NPCs.Enabled) and ent.NPC then continue end
+            if not ent.Targetable then continue end
+			if ent.Player and getAccountTier(ent.Player) >= 1 and getAccountTier(lplr) == 0 then continue end
+            if not ent.Character or not ent.RootPart or not ent.RootPart.Parent then continue end
 
-			local delta = ent.RootPart.Position - originPos
-			local distSq = delta.X*delta.X + delta.Y*delta.Y + delta.Z*delta.Z
-			if distSq > rangeSq then continue end
+            local delta = ent.RootPart.Position - originPos
+            local distSq = delta.X*delta.X + delta.Y*delta.Y + delta.Z*delta.Z
+            if distSq > rangeSq then continue end
 
-			if maxAngle < 360 then
-				local facing = gameCamera.CFrame.LookVector
-				if delta.Magnitude > 0.001 then
-					local dot = facing:Dot(delta.Unit)
-					if dot < fovThreshold then continue end
-				end
-			end
+            if maxAngle < 360 then
+                local facing = gameCamera.CFrame.LookVector
+                if delta.Magnitude > 0.001 then
+                    local dot = facing:Dot(delta.Unit)
+                    if dot < fovThreshold then continue end
+                end
+            end
 
-			if Targets.Walls.Enabled then
-				local ray = workspace:Raycast(originPos, delta, rayCheck)
-				if ray then continue end
-			end
+            if Targets.Walls.Enabled then
+                local ray = workspace:Raycast(originPos, delta, rayCheck)
+                if ray then continue end
+            end
 
-			if sortMethod == "Cursor" then
-				local mousePos = inputService:GetMouseLocation()
-				local screenPos, onScreen = gameCamera:WorldToScreenPoint(ent.RootPart.Position)
-				if not onScreen then continue end
-				local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
-				if screenDist > FOV.Value then continue end
-			end
+            if sortMethod == "Cursor" then
+                local mousePos = inputService:GetMouseLocation()
+                local screenPos, onScreen = gameCamera:WorldToScreenPoint(ent.RootPart.Position)
+                if not onScreen then continue end
+                local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                if screenDist > FOV.Value then continue end
+            end
 
-			table.insert(valid, {Entity = ent})
-		end
+            table.insert(valid, {Entity = ent})
+        end
 
-		if #valid == 0 then return {} end
+        if #valid == 0 then return {} end
 
-		local sortFunc = sortmethods[sortMethod] or sortmethods.Distance
-		table.sort(valid, sortFunc)
-		local unwrapped = {}
-		for _, v in ipairs(valid) do
-			table.insert(unwrapped, v.Entity)
-		end
-		return unwrapped
-	end
+        local sortFunc = sortmethods[sortMethod] or sortmethods.Distance
+        table.sort(valid, sortFunc)
+        local unwrapped = {}
+        for _, v in ipairs(valid) do
+            table.insert(unwrapped, v.Entity)
+        end
+        return unwrapped
+    end
 
 	local function pickRandomPart(character)
 		local roll = math.random(1, 100)
@@ -9411,7 +9286,7 @@ run(function()
         Normal = function(ent)
             if not Targets.Players.Enabled and ent.Player then return end
             if not Targets.NPCs.Enabled and ent.NPC then return end
-            if Teammates.Enabled and (not ent.Targetable) and (not ent.Friend) then return end
+            if Teammates.Enabled and (not ent.Targetable) and (not ent.Friend) and not (ent.Player and isTeammate(ent.Player)) then return end
             Strings[ent] = ent.Player and whitelist:tag(ent.Player, true) .. (DisplayName.Enabled and ent.Player.DisplayName or ent.Player.Name) or ent.Character.Name
 
             if Health.Enabled then
@@ -9455,14 +9330,15 @@ run(function()
                     if nametag.Hand then
                         nametag.Hand.Image = bedwars.getIcon(inventory.hand or { itemType = '' }, true)
                     end
+                    -- FIXED: added inventory.armor nil check
                     if nametag.Helmet then
-                        nametag.Helmet.Image = bedwars.getIcon(inventory.armor[4] or { itemType = '' }, true)
+                        nametag.Helmet.Image = bedwars.getIcon(inventory.armor and inventory.armor[4] or { itemType = '' }, true)
                     end
                     if nametag.Chestplate then
-                        nametag.Chestplate.Image = bedwars.getIcon(inventory.armor[5] or { itemType = '' }, true)
+                        nametag.Chestplate.Image = bedwars.getIcon(inventory.armor and inventory.armor[5] or { itemType = '' }, true)
                     end
                     if nametag.Boots then
-                        nametag.Boots.Image = bedwars.getIcon(inventory.armor[6] or { itemType = '' }, true)
+                        nametag.Boots.Image = bedwars.getIcon(inventory.armor and inventory.armor[6] or { itemType = '' }, true)
                     end
                 end
             end
@@ -9484,7 +9360,7 @@ run(function()
                 kitIcon.Parent = nametag
 
                 local kit = ent.Player:GetAttribute('PlayingAsKits')
-				
+                
                 if kit then
                     local kitImage = kitImageIds[kit:lower()]
                     kitIcon.Image = kitImage or kitImageIds["none"]
@@ -9584,7 +9460,7 @@ run(function()
         Drawing = function(ent)
             if not Targets.Players.Enabled and ent.Player then return end
             if not Targets.NPCs.Enabled and ent.NPC then return end
-            if Teammates.Enabled and (not ent.Targetable) and (not ent.Friend) then return end
+            if Teammates.Enabled and (not ent.Targetable) and (not ent.Friend) and not (ent.Player and isTeammate(ent.Player)) then return end
 
             local nametag = {}
             nametag.BG = Drawing.new('Square')
@@ -9684,11 +9560,12 @@ run(function()
 
             if Equipment.Enabled and ent.Player and store.inventories[ent.Player] then
                 local inventory = store.inventories[ent.Player]
+                -- FIXED: currentEquip uses safe armor access
                 local currentEquip = {
                     tostring(inventory.hand and inventory.hand.itemType or ''),
-                    tostring(inventory.armor[4] and inventory.armor[4].itemType or ''),
-                    tostring(inventory.armor[5] and inventory.armor[5].itemType or ''),
-                    tostring(inventory.armor[6] and inventory.armor[6].itemType or '')
+                    tostring((inventory.armor and inventory.armor[4] and inventory.armor[4].itemType) or ''),
+                    tostring((inventory.armor and inventory.armor[5] and inventory.armor[5].itemType) or ''),
+                    tostring((inventory.armor and inventory.armor[6] and inventory.armor[6].itemType) or '')
                 }
 
                 local equipKey = table.concat(currentEquip, "|")
@@ -9697,14 +9574,15 @@ run(function()
                     if nametag.Hand then
                         nametag.Hand.Image = bedwars.getIcon(inventory.hand or { itemType = '' }, true)
                     end
+                    -- FIXED: added inventory.armor nil check
                     if nametag.Helmet then
-                        nametag.Helmet.Image = bedwars.getIcon(inventory.armor[4] or { itemType = '' }, true)
+                        nametag.Helmet.Image = bedwars.getIcon(inventory.armor and inventory.armor[4] or { itemType = '' }, true)
                     end
                     if nametag.Chestplate then
-                        nametag.Chestplate.Image = bedwars.getIcon(inventory.armor[5] or { itemType = '' }, true)
+                        nametag.Chestplate.Image = bedwars.getIcon(inventory.armor and inventory.armor[5] or { itemType = '' }, true)
                     end
                     if nametag.Boots then
-                        nametag.Boots.Image = bedwars.getIcon(inventory.armor[6] or { itemType = '' }, true)
+                        nametag.Boots.Image = bedwars.getIcon(inventory.armor and inventory.armor[6] or { itemType = '' }, true)
                     end
                 end
             end
@@ -9765,7 +9643,8 @@ run(function()
 	Loop = {
 		Normal = function()
 			frameCounter = frameCounter + 1
-			local skipPosition = frameCounter % 2 == 0
+			local skipPosition = frameCounter % 3 == 0
+			local skipVisCheck = frameCounter % 2 ~= 0
 			local updateEquipment = frameCounter % 30 == 0
 			local updateKit = frameCounter % 30 == 0
 			local updateDistanceText = frameCounter % 6 == 0
@@ -9779,9 +9658,14 @@ run(function()
 					end
 				end
 
-				local headPos, headVis = gameCamera:WorldToViewportPoint(ent.RootPart.Position + vector3new(0, ent.HipHeight + 1, 0))
-				nametag.Visible = headVis
-				if not headVis then continue end
+				if not skipVisCheck then
+					local headPos, headVis = gameCamera:WorldToViewportPoint(ent.RootPart.Position + vector3new(0, ent.HipHeight + 1, 0))
+					nametag.Visible = headVis
+					if headVis then
+						nametag.Position = udim2fromOffset(headPos.X, headPos.Y)
+					end
+				end
+				if not nametag.Visible then continue end
 
 				if skipPosition then
 					nametag.Position = udim2fromOffset(headPos.X, headPos.Y)
@@ -9802,11 +9686,12 @@ run(function()
 				if Equipment.Enabled and updateEquipment then
 					if ent.Player and store.inventories[ent.Player] then
 						local inventory = store.inventories[ent.Player]
+						-- FIXED: currentEquip uses safe armor access
 						local currentEquip = {
-							inventory.hand and inventory.hand.itemType or '',
-							inventory.armor[4] and inventory.armor[4].itemType or '',
-							inventory.armor[5] and inventory.armor[5].itemType or '',
-							inventory.armor[6] and inventory.armor[6].itemType or ''
+							(inventory.hand and inventory.hand.itemType) or '',
+							(inventory.armor and inventory.armor[4] and inventory.armor[4].itemType) or '',
+							(inventory.armor and inventory.armor[5] and inventory.armor[5].itemType) or '',
+							(inventory.armor and inventory.armor[6] and inventory.armor[6].itemType) or ''
 						}
 						local equipKey = table.concat(currentEquip, "|")
 						if equipmentCache[ent] ~= equipKey then
@@ -9814,14 +9699,15 @@ run(function()
 							if nametag.Hand then
 								nametag.Hand.Image = bedwars.getIcon(inventory.hand or { itemType = '' }, true)
 							end
+							-- FIXED: added inventory.armor nil check
 							if nametag.Helmet then
-								nametag.Helmet.Image = bedwars.getIcon(inventory.armor[4] or { itemType = '' }, true)
+								nametag.Helmet.Image = bedwars.getIcon(inventory.armor and inventory.armor[4] or { itemType = '' }, true)
 							end
 							if nametag.Chestplate then
-								nametag.Chestplate.Image = bedwars.getIcon(inventory.armor[5] or { itemType = '' }, true)
+								nametag.Chestplate.Image = bedwars.getIcon(inventory.armor and inventory.armor[5] or { itemType = '' }, true)
 							end
 							if nametag.Boots then
-								nametag.Boots.Image = bedwars.getIcon(inventory.armor[6] or { itemType = '' }, true)
+								nametag.Boots.Image = bedwars.getIcon(inventory.armor and inventory.armor[6] or { itemType = '' }, true)
 							end
 						end
 					end
@@ -15154,6 +15040,7 @@ run(function()
 	local Tesla
 	local Hive
 	local Pinata
+	local Crops
 	local Effect
 	local CustomHealth = {}
 	local Animation
@@ -15295,8 +15182,8 @@ run(function()
 	local function passesChecks(v)
 		if not SelfBreak.Enabled then
 			if v.Name == 'bed' then
-				local myTeam = lplr:GetAttribute('Team')
-				if myTeam and v:GetAttribute('Team'..myTeam..'NoBreak') then return false end
+				local myTeam = lplr.Character and (lplr.Character:GetAttribute('Team') or lplr.Character:GetAttribute('TeamId'))
+				if myTeam and tonumber(v:GetAttribute('TeamId')) == tonumber(myTeam) then return false end
 			end
 			if v:GetAttribute('PlacedByUserId') == lplr.UserId then return false end
 			if isSameTeam(v:GetAttribute('PlacedByUserId')) then return false end
@@ -15407,25 +15294,29 @@ run(function()
 		return bestYeti
 	end
 
-	local function attemptBreak(tab, localPosition)
+	local function attemptBreak(tab, localPosition, skipBreakCheck)
 		if not tab then return false end
 		if MouseDown and MouseDown.Enabled and not inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then return false end
+		local best, bestDist = nil, math.huge
 		for _, v in tab do
-			if (v.Position - localPosition).Magnitude >= Range.Value then continue end
-			if v.Name ~= 'bed' then
+			local dist = (v.Position - localPosition).Magnitude
+			if dist >= Range.Value or dist >= bestDist then continue end
+			if not skipBreakCheck and v.Name ~= 'bed' then
 				local blockPos = bedwars.BlockController:getBlockPosition(v.Position)
 				local ok, canBreak = pcall(function() return bedwars.BlockController:isBlockBreakable({blockPosition = blockPos}, lplr) end)
 				if not (ok and canBreak) then continue end
 			end
 			if not passesChecks(v) then continue end
-			if RagnarBreaker and RagnarBreaker.Enabled then
-				if store.equippedKit == 'berserker' and bedwars.AbilityController and bedwars.AbilityController:canUseAbility("berserker_rage") then
-					bedwars.AbilityController:useAbility('berserker_rage')
-				end
-			end
-			return doBreak(v)
+			best = v
+			bestDist = dist
 		end
-		return false
+		if not best then return false end
+		if RagnarBreaker and RagnarBreaker.Enabled then
+			if store.equippedKit == 'berserker' and bedwars.AbilityController and bedwars.AbilityController:canUseAbility("berserker_rage") then
+				bedwars.AbilityController:useAbility('berserker_rage')
+			end
+		end
+		return doBreak(best)
 	end
 
 	local function attemptBreakNamed(names, localPosition)
@@ -15476,14 +15367,29 @@ run(function()
 				local beds = collection('bed', Breaker)
 				local luckyblock = collection('LuckyBlock', Breaker)
 				local ironores = collection('iron_ore_mesh_block', Breaker)
-				local teslaBlocks = collection('tesla_trap', Breaker)
-				local hiveBlocks = collection('beehive', Breaker)
-				local pinataBlocks = collection('pinata', Breaker)
 				customlist = collection('block', Breaker, function(tab, obj)
 					if table.find(Custom.ListEnabled, obj.Name) then
 						table.insert(tab, obj)
 					end
 				end)
+
+				local trackedSpecial = {tesla_trap={}, beehive={}, pinata={}, carrot={}, melon={}, pumpkin={}}
+				local function trackAdd(obj)
+					if not obj:IsA('BasePart') then return end
+					local t = trackedSpecial[obj.Name]
+					if t then table.insert(t, obj) end
+				end
+				local function trackRemove(obj)
+					if not obj:IsA('BasePart') then return end
+					local t = trackedSpecial[obj.Name]
+					if t then
+						local i = table.find(t, obj)
+						if i then table.remove(t, i) end
+					end
+				end
+				for _, obj in workspace:GetDescendants() do trackAdd(obj) end
+				Breaker:Clean(workspace.DescendantAdded:Connect(trackAdd))
+				Breaker:Clean(workspace.DescendantRemoving:Connect(trackRemove))
 
 				repeat
 					task.wait(1 / UpdateRate.Value)
@@ -15505,19 +15411,46 @@ run(function()
 							end
 							if foundYeti then continue end
 						end
-						if attemptBreak(Bed.Enabled and beds, localPosition) then continue end
-						if attemptBreak(customlist, localPosition) then continue end
-						if attemptBreak(LuckyBlock.Enabled and luckyblock, localPosition) then continue end
-						if attemptBreak(IronOre.Enabled and ironores, localPosition) then continue end
 
-						if Tesla and Tesla.Enabled then
-							if attemptBreak(teslaBlocks, localPosition) then continue end
+						local best, bestDist = nil, math.huge
+						local function eval(tab, skip)
+							if not tab then return end
+							for _, v in tab do
+								if not v or not v.Parent then continue end
+								local dist = (v.Position - localPosition).Magnitude
+								if dist >= Range.Value or dist >= bestDist then continue end
+								if not skip and v.Name ~= 'bed' then
+									local blockPos = bedwars.BlockController:getBlockPosition(v.Position)
+									local ok, canBreak = pcall(function() return bedwars.BlockController:isBlockBreakable({blockPosition = blockPos}, lplr) end)
+									if not (ok and canBreak) then continue end
+								end
+								if not passesChecks(v) then continue end
+								best = v
+								bestDist = dist
+							end
 						end
-						if Hive and Hive.Enabled then
-							if attemptBreak(hiveBlocks, localPosition) then continue end
+						eval(Bed.Enabled and beds)
+						eval(customlist)
+						eval(LuckyBlock.Enabled and luckyblock)
+						eval(IronOre.Enabled and ironores)
+						eval(Tesla and Tesla.Enabled and trackedSpecial.tesla_trap, true)
+						eval(Hive and Hive.Enabled and trackedSpecial.beehive)
+						eval(Pinata and Pinata.Enabled and trackedSpecial.pinata, true)
+						if Crops and Crops.Enabled then
+							eval(trackedSpecial.carrot, true)
+							eval(trackedSpecial.melon, true)
+							eval(trackedSpecial.pumpkin, true)
 						end
-						if Pinata and Pinata.Enabled then
-							if attemptBreak(pinataBlocks, localPosition) then continue end
+						if best then
+							if RagnarBreaker and RagnarBreaker.Enabled then
+								if store.equippedKit == 'berserker' and bedwars.AbilityController and bedwars.AbilityController:canUseAbility("berserker_rage") then
+									bedwars.AbilityController:useAbility('berserker_rage')
+								end
+							end
+							if not MouseDown or not MouseDown.Enabled or inputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+								doBreak(best)
+								continue
+							end
 						end
 
 						for _, v in parts do
@@ -15595,6 +15528,11 @@ run(function()
 	Pinata = Breaker:CreateToggle({
 		Name = 'Break Pinata',
 		Default = false
+	})
+	Crops = Breaker:CreateToggle({
+		Name = 'Break Crops',
+		Default = false,
+		Tooltip = 'Breaks pumpkin, carrot and watermelon crops '
 	})
 	Effect = Breaker:CreateToggle({
 		Name = 'Show Healthbar & Effects',
