@@ -1,4 +1,3 @@
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local run = function(func) func() end
 local cloneref = cloneref or function(obj) return obj end
 
@@ -1663,4 +1662,57 @@ run(function()
             end
         end
     })
+end)
+
+																									run(function()
+	local Headless
+	local faceTransparencyBackup = nil
+
+	Headless = vape.Categories.Utility:CreateModule({
+		PerformanceModeBlacklisted = true,
+		Name = 'Headless',
+		Tooltip = 'free headless 2026',
+		Function = function(callback)
+			if callback then
+				local function applyHeadless()
+					if not (entitylib.isAlive and entitylib.character and entitylib.character.Character and entitylib.character.Head) then return end
+					local head = entitylib.character.Head
+					if faceTransparencyBackup == nil then
+						local face = head:FindFirstChild('face')
+						if face and face:IsA("Decal") then
+							faceTransparencyBackup = face.Transparency
+						end
+					end
+					head.Transparency = 1
+					local face = head:FindFirstChild('face')
+					if face and face:IsA("Decal") then
+						face.Transparency = 1
+					end
+				end
+
+				applyHeadless()
+
+				Headless:Clean(entitylib.Events.LocalAdded:Connect(function()
+					faceTransparencyBackup = nil
+					applyHeadless()
+				end))
+
+				Headless:Clean(vapeEvents.AttributeChanged.Event:Connect(function(attr)
+					if attr == 'Health' then
+						applyHeadless()
+					end
+				end))
+			else
+				if entitylib.isAlive and entitylib.character and entitylib.character.Character and entitylib.character.Head then
+					entitylib.character.Head.Transparency = 0
+					local face = entitylib.character.Head:FindFirstChild('face')
+					if face and face:IsA("Decal") then
+						face.Transparency = faceTransparencyBackup ~= nil and faceTransparencyBackup or 0
+						faceTransparencyBackup = nil
+					end
+				end
+			end
+		end,
+		Default = false
+	})
 end)
