@@ -4078,7 +4078,7 @@ run(function()
 			if not Targets.Players.Enabled and ent.Player then return end
 			if not Targets.NPCs.Enabled and ent.NPC then return end
 			if Teammates.Enabled and (not ent.Targetable) and (not ent.Friend) then return end
-			if ent.Player and getAccountTier(ent.Player) >= 1 and getAccountTier(lplr) == 0 then return end
+			if ent.Player and getAccountTier and getAccountTier(ent.Player) >= 1 and getAccountTier(lplr) == 0 then return end
 			if vape.ThreadFix then
 				setthreadidentity(8)
 			end
@@ -4145,7 +4145,7 @@ run(function()
 			if not Targets.Players.Enabled and ent.Player then return end
 			if not Targets.NPCs.Enabled and ent.NPC then return end
 			if Teammates.Enabled and (not ent.Targetable) and (not ent.Friend) then return end
-			if ent.Player and getAccountTier(ent.Player) >= 1 and getAccountTier(lplr) == 0 then return end
+			if ent.Player and getAccountTier and getAccountTier(ent.Player) >= 1 and getAccountTier(lplr) == 0 then return end
 			if vape.ThreadFix then
 				setthreadidentity(8)
 			end
@@ -4175,7 +4175,7 @@ run(function()
 			if not Targets.Players.Enabled and ent.Player then return end
 			if not Targets.NPCs.Enabled and ent.NPC then return end
 			if Teammates.Enabled and (not ent.Targetable) and (not ent.Friend) then return end
-			if ent.Player and getAccountTier(ent.Player) >= 1 and getAccountTier(lplr) == 0 then return end
+			if ent.Player and getAccountTier and getAccountTier(ent.Player) >= 1 and getAccountTier(lplr) == 0 then return end
 			if vape.ThreadFix then
 				setthreadidentity(8)
 			end
@@ -6684,7 +6684,7 @@ run(function()
 	local connections = {}
 	
 	vape.Categories.World:CreateModule({
-		Name = 'Anti-AFK',
+		Name = 'AntiAFK',
 		Function = function(callback)
 			if callback then
 				for _, v in getconnections(lplr.Idled) do
