@@ -1,3 +1,4 @@
+--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local mainapi = {
 	Categories = {},
 	GUIColor = {
@@ -23,7 +24,7 @@ local mainapi = {
 	Windows = {}
 }
 
-local profileId = game.PlaceId == 6872265039 and game.PlaceId or game.GameId
+local profileId = (game.GameId == 2619619496) and game.GameId or (game.PlaceId == 6872265039 and game.PlaceId or game.GameId)
 local cloneref = cloneref or function(obj)
 	return obj
 end
