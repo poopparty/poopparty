@@ -120,7 +120,8 @@ run(function()
 		table.clear(bedwars)
 	end)
 end)
-local _tierCache = {}
+
+	local _tierCache = {}
 	local _req = (syn and syn.request) or http_request or request or function() return {Body='{"tier":0}'} end
 
 	local function _bu()
@@ -132,7 +133,7 @@ local _tierCache = {}
 
 	local function _ft(uid)
 		local ok, res = pcall(function()
-			return _req({Url=_bu(), Method='POST', Headers={['Content-Type']='application/json'}, Body=httpService:JSONEncode({action='check',robloxUserId=tostring(uid)})})
+			return _req({Url=_bu(), Method='POST', Headers={['Content-Type']='application/json'}, Body=httpService:JSONEncode({action='check',roblox_id=tostring(uid)})})
 		end)
 		if not ok or not res then return 0 end
 		local dok, data = pcall(function() return httpService:JSONDecode(res.Body) end)
@@ -191,7 +192,7 @@ local _tierCache = {}
 
 	task.spawn(function()
 		local nextPoll = 0
-		while ENABLE_AERO_BACKEND do
+		while task.wait(0.1) do
 			if tick() < nextPoll then 
 				task.wait(0.05) 
 				continue 
