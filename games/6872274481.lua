@@ -249,7 +249,6 @@ local originalKnit
 	end)
 
 	local function getAccountTier(player)
-		if not ENABLE_BACKEND_TIERS then return 0 end
 		if _tierCache[player.UserId] == nil then
 			_tierCache[player.UserId] = false
 			task.spawn(function() 
@@ -321,6 +320,7 @@ local originalKnit
 			end
 		end
 	end)
+
 
 local function addBlur(parent)
 	local blur = Instance.new('ImageLabel')
