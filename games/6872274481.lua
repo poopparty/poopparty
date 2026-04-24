@@ -322,6 +322,7 @@ local originalKnit
 	end)
 
 
+
 local function addBlur(parent)
 	local blur = Instance.new('ImageLabel')
 	blur.Name = 'Blur'
