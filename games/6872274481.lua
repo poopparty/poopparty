@@ -208,7 +208,7 @@ task.spawn(function()
         local res = _req({
             Url = _bu(),
             Method = 'POST',
-            Headers = {['Content-Type'] = 'application/json', ['Authorization'] = 'Bearer ' .. _SERCET},
+            Headers = {['Content-Type'] = 'application/json'},
             Body = httpService:JSONEncode({action = 'getMessage', robloxUserId = tostring(lplr.UserId)})
         })
         if not res or not res.Body then nextPoll = tick() + 3 continue end
@@ -224,11 +224,11 @@ task.spawn(function()
                 _req({
                     Url = _bu(),
                     Method = 'POST',
-                    Headers = {['Content-Type'] = 'application/json', ['Authorization'] = 'Bearer ' .. _SERCET},
+                    Headers = {['Content-Type'] = 'application/json'},
                     Body = httpService:JSONEncode({action = 'removeMessage', robloxUserId = tostring(lplr.UserId)})
                 })
             end)
-            nextPoll = tick() + 1
+            nextPoll = tick() + 1.5
         else
             nextPoll = tick() + 3
         end
