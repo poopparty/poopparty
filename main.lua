@@ -72,7 +72,7 @@ local function migrateProfiles()
 
 	local oldId = tostring((game.GameId == 2619619496) and game.GameId
 		or (game.PlaceId == 6872265039 and game.PlaceId or game.GameId))
-	local newId = tostring(game.PlaceId)
+	local newId = tostring((game.GameId == 2619619496) and game.GameId or game.PlaceId)
 
 	if oldId == newId then
 		pcall(writefile, 'newvape/profiles/migrated_placeid.txt', 'done')
@@ -86,6 +86,18 @@ local function migrateProfiles()
 			local newPath = name:sub(1, -#suffix - 1) .. newId .. '.txt'
 			if not isfile(newPath) then
 				pcall(function() writefile(newPath, readfile(path)) end)
+			end
+		end
+	end
+
+	if isfolder('newvape/profiles/premade') then
+		for _, path in ipairs(listfiles('newvape/profiles/premade')) do
+			local name = path:gsub('\\', '/')
+			if name:sub(-#suffix) == suffix then
+				local newPath = name:sub(1, -#suffix - 1) .. newId .. '.txt'
+				if not isfile(newPath) then
+					pcall(function() writefile(newPath, readfile(path)) end)
+				end
 			end
 		end
 	end
