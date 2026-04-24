@@ -1342,7 +1342,6 @@ run(function()
 
 					if suc and plr then
 						store.attackPlayerFail = tick()
-						if getAccountTier(plr) >= 99 and getAccountTier(lplr) <= 4 then return end
 						if whitelist.get and not select(2, whitelist:get(plr)) then return end
 					end
 					store.match.lastHit.Attack = tick()
@@ -1367,7 +1366,7 @@ run(function()
 		if obj and obj.Name == 'bed' then
 			for _, p in playersService:GetPlayers() do
 				local hasNoBreak = pcall(function() return obj:GetAttribute('Team'..(p:GetAttribute('Team') or 0)..'NoBreak') end)
-				if hasNoBreak and getAccountTier(p) == 99 and getAccountTier(0) <= 4 then
+				if hasNoBreak then
 					return false
 				end
 			end
@@ -1754,6 +1753,7 @@ run(function()
 
 	vape:Clean(function()
 		Client.Get = OldGet
+		bedwars.BlockBreaker.hitBlock = oldHitBlock
 		bedwars.BlockController.isBlockBreakable = OldBreak
 		store.blockPlacer:disable()
 		for _, v in vapeEvents do
