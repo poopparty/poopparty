@@ -120,17 +120,7 @@ run(function()
 		table.clear(bedwars)
 	end)
 end)
-
-local ENABLE_BACKEND_TIERS = false   
-
-
-local function startWL()
-	if not ENABLE_BACKEND_TIERS then
-		getgenv().getAeroTier = function() return 0 end
-		return
-	end
-
-	local _tierCache = {}
+local _tierCache = {}
 	local _req = (syn and syn.request) or http_request or request or function() return {Body='{"tier":0}'} end
 
 	local function _bu()
@@ -324,9 +314,6 @@ local function startWL()
 			end
 		end
 	end)
-end
-
-task.spawn(startWL)
 
 
 for _, v in vape.Modules do
