@@ -126,6 +126,15 @@ local AntiFallPart
 local bedwars, remotes, sides, oldinvrender, oldSwing = {}, {}, {}
 local originalKnit 
 local _tierCache = {}
+getgenv()._aeroTierReady = true
+local function getAccountTier(player)
+    return 0
+end
+
+getgenv().getAeroTier = function(player)
+    return getAccountTier(player)
+end  
+
 
 local function addBlur(parent)
 	local blur = Instance.new('ImageLabel')
