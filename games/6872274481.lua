@@ -126,6 +126,14 @@ local AntiFallPart
 local bedwars, remotes, sides, oldinvrender, oldSwing = {}, {}, {}
 local originalKnit 
 local _tierCache = {}
+getgenv()._aeroTierReady = true
+local function getAccountTier(player)
+    return 0
+end
+
+getgenv().getAeroTier = function(player)
+    return getAccountTier(player)
+end  
 
 
 local function addBlur(parent)
@@ -5424,8 +5432,8 @@ run(function()
     local _t4HitTick = {}
 
     local function FireAttackRemote(attackTable, ...)
-        if not AttackRemote then return end
-        if not canHitWithCustomReg() then return end
+        if not AttackRemote then  return end
+        if not canHitWithCustomReg() then   return end
         local t4ok, t4plr = pcall(function()
             return playersService:GetPlayerFromCharacter(attackTable.entityInstance)
         end)
@@ -5440,7 +5448,7 @@ run(function()
                     _t4HitCount[uid] = 0
                 end
                 _t4HitCount[uid] = (_t4HitCount[uid] or 0) + 1
-                if _t4HitCount[uid] > 32 then return end
+                if _t4HitCount[uid] > 32 then  return end
             end
         end
 
@@ -5472,7 +5480,7 @@ run(function()
         end
 
         if suc and plr then
-            if not select(2, whitelist:get(plr)) then return end
+            if not select(2, whitelist:get(plr)) then  return end
         end
 
         return AttackRemote:SendToServer(attackTable, ...)
