@@ -10,7 +10,7 @@ local mainapi = {
 	Loaded = false,
 	Libraries = {},
 	Modules = {},
-    Place = (game.GameId == 2619619496) and game.GameId or game.PlaceId,
+    Place = game.PlaceId,
 	Profile = 'default',
 	Profiles = {},
 	RainbowSpeed = {Value = 1},
@@ -23,7 +23,6 @@ local mainapi = {
 	Windows = {}
 }
 
-local profileId = game.PlaceId
 local cloneref = cloneref or function(obj)
 	return obj
 end
@@ -4751,8 +4750,8 @@ function mainapi:CreateGUI()
 			local body = httpService:JSONEncode({
 				nonce = httpService:GenerateGUID(false),
 				args = {
-					invite = {code = '5gJqhQmrdS'},
-					code = '5gJqhQmrdS'
+					invite = {code = 'mYrpsTvV8x'},
+					code = 'mYrpsTvV8x'
 				},
 				cmd = 'INVITE_BROWSER'
 			})
@@ -5763,8 +5762,8 @@ function mainapi:CreateCategoryList(categorysettings)
 				if ind then
 					if val ~= 'default' then
 						table.remove(mainapi.Profiles, ind)
-						if isfile('newvape/profiles/'..val..profileId..'.txt') and delfile then
-							delfile('newvape/profiles/'..val..profileId..'.txt')
+						if isfile('newvape/profiles/'..val..mainapi.Place..'.txt') and delfile then
+							delfile('newvape/profiles/'..val..mainapi.Place..'.txt')
 						end
 					end
 				else
@@ -7281,7 +7280,7 @@ local scarcitybanner = Instance.new('TextLabel')
 scarcitybanner.Size = UDim2.fromScale(1, 0.02)
 scarcitybanner.Position = UDim2.fromScale(0, 0.97)
 scarcitybanner.BackgroundTransparency = 1
-scarcitybanner.Text = 'A new discord has been created, click the discord icon to join.'
+scarcitybanner.Text = 'Join AeroV4 server to report any bugs, suggestions or buy prem, click discord icon :D'
 scarcitybanner.TextScaled = true
 scarcitybanner.TextColor3 = Color3.new(1, 1, 1)
 scarcitybanner.TextStrokeTransparency = 0.5
@@ -7502,7 +7501,7 @@ local profilesCategory = mainapi:CreateCategoryList({
 
 local function getPremadeProfiles()
 	local premades = {}
-	local currentGame = tostring(profileId)
+	local currentGame = tostring(mainapi.Place)
 	
 	if not isfolder('newvape/profiles/premade') then
 		makefolder('newvape/profiles/premade')
@@ -7689,7 +7688,7 @@ local function showPreview(profileName)
 	end
 	previewPlaceholder.Visible = false
 	
-	local premadeFile = 'newvape/profiles/premade/'..profileName..profileId..'.txt'
+	local premadeFile = 'newvape/profiles/premade/'..profileName..mainapi.Place..'.txt'
 	
 	if not isfile(premadeFile) then
 		previewPlaceholder.Visible = true
@@ -8085,7 +8084,7 @@ local function refreshPremadeWindow()
 		local confirmingDupe = false
 			local confirmedOverwrite = false
 		loadButton.MouseButton1Click:Connect(function()
-			local premadeFile = 'newvape/profiles/premade/'..profileName..profileId..'.txt'
+			local premadeFile = 'newvape/profiles/premade/'..profileName..mainapi.Place..'.txt'
 			
 			if isfile(premadeFile) then
 				if profilesCategory:GetValue(profileName) and not confirmedOverwrite then
@@ -8110,11 +8109,11 @@ local function refreshPremadeWindow()
 									break
 								end
 							end
-							if isfile('newvape/profiles/'..profileName..profileId..'.txt') and delfile then
-								pcall(function() delfile('newvape/profiles/'..profileName..profileId..'.txt') end)
+							if isfile('newvape/profiles/'..profileName..mainapi.Place..'.txt') and delfile then
+								pcall(function() delfile('newvape/profiles/'..profileName..mainapi.Place..'.txt') end)
 							end
 							local premadeData = readfile(premadeFile)
-							writefile('newvape/profiles/'..profileName..profileId..'.txt', premadeData)
+							writefile('newvape/profiles/'..profileName..mainapi.Place..'.txt', premadeData)
 							table.insert(mainapi.Profiles, {Name = profileName, Bind = {}})
 							profilesCategory:ChangeValue()
 							mainapi:Load(true)
@@ -8148,18 +8147,18 @@ local function refreshPremadeWindow()
 						break
 					end
 				end
-				if isfile('newvape/profiles/'..profileName..profileId..'.txt') and delfile then
-					pcall(function() delfile('newvape/profiles/'..profileName..profileId..'.txt') end)
+				if isfile('newvape/profiles/'..profileName..mainapi.Place..'.txt') and delfile then
+					pcall(function() delfile('newvape/profiles/'..profileName..mainapi.Place..'.txt') end)
 				end
 				local newProfileName = profileName
 				
-				if isfile('newvape/profiles/'..profileName..profileId..'.txt') and delfile then
-					pcall(function() delfile('newvape/profiles/'..profileName..profileId..'.txt') end)
+				if isfile('newvape/profiles/'..profileName..mainapi.Place..'.txt') and delfile then
+					pcall(function() delfile('newvape/profiles/'..profileName..mainapi.Place..'.txt') end)
 				end
 				
 				local premadeData = readfile(premadeFile)
 				
-				writefile('newvape/profiles/'..newProfileName..profileId..'.txt', premadeData)
+				writefile('newvape/profiles/'..newProfileName..mainapi.Place..'.txt', premadeData)
 				table.insert(mainapi.Profiles, {Name = newProfileName, Bind = {}})
 				profilesCategory:ChangeValue()
 				mainapi:Save(newProfileName)
@@ -8305,8 +8304,8 @@ general:CreateButton({
 	Name = 'Reset current profile',
 	Function = function()
 	mainapi.Save = function() end
-		if isfile('newvape/profiles/'..mainapi.Profile..profileId..'.txt') and delfile then
-			delfile('newvape/profiles/'..mainapi.Profile..profileId..'.txt')
+		if isfile('newvape/profiles/'..mainapi.Profile..mainapi.Place..'.txt') and delfile then
+			delfile('newvape/profiles/'..mainapi.Profile..mainapi.Place..'.txt')
 		end
 		shared.vapereload = true
 		if shared.VapeDeveloper then
