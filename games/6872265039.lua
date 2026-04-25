@@ -126,7 +126,9 @@ getgenv()._aeroTierReady = true
 getgenv().getAeroTier = function(...)
     return 0
 end  
-
+local function getAccountTier(...)
+	return 0
+end
 
 for _, v in vape.Modules do
 	if v.Category == 'Combat' or v.Category == 'Render' then
