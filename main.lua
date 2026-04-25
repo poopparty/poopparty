@@ -67,45 +67,6 @@ local function downloadFile(path, func)
 	return (func or readfile)(path)
 end
 
-local function migrateProfiles()
-	if isfile('newvape/profiles/migrated_placeid.txt') then return end
-
-    local oldId = tostring(game.GameId)
-    local newId = tostring(game.PlaceId)
-
-	if oldId == newId then
-		pcall(writefile, 'newvape/profiles/migrated_placeid.txt', 'done')
-		return
-	end
-
-	local suffix = oldId .. '.txt'
-	for _, path in ipairs(listfiles('newvape/profiles')) do
-		local name = path:gsub('\\', '/')
-		if name:sub(-#suffix) == suffix then
-			local newPath = name:sub(1, -#suffix - 1) .. newId .. '.txt'
-			if not isfile(newPath) then
-				pcall(function() writefile(newPath, readfile(path)) end)
-			end
-		end
-	end
-
-	if isfolder('newvape/profiles/premade') then
-		for _, path in ipairs(listfiles('newvape/profiles/premade')) do
-			local name = path:gsub('\\', '/')
-			if name:sub(-#suffix) == suffix then
-				local newPath = name:sub(1, -#suffix - 1) .. newId .. '.txt'
-				if not isfile(newPath) then
-					pcall(function() writefile(newPath, readfile(path)) end)
-				end
-			end
-		end
-	end
-
-	pcall(writefile, 'newvape/profiles/migrated_placeid.txt', 'done')
-end
-
-pcall(migrateProfiles)
-
 local function finishLoading()
 	vape.Init = nil
 	if not vape.Load then
