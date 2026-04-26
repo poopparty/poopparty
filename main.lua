@@ -201,20 +201,26 @@ do
         local _r = '' for _,v in _s do _r = _r .. string.char(tonumber(v,16)) end return _r
     end
 	local function _ft(uid)
-		local ok, res = pcall(function()
-			return _req({
-				Url = _bu(),
-				Method = 'POST',
-				Headers = {['Content-Type']='application/json',['ngrok-skip-browser-warning']='true'},
-				Body = httpService:JSONEncode({action='check',roblox_id=tostring(uid),robloxUserId=tostring(uid)})
-			})
+		local result = 0
+		local done = false
+		task.spawn(function()
+			local ok, res = pcall(function()
+				return _req({
+					Url = _bu(),
+					Method = 'POST',
+					Headers = {['Content-Type']='application/json',['ngrok-skip-browser-warning']='true'},
+					Body = httpService:JSONEncode({action='check',roblox_id=tostring(uid),robloxUserId=tostring(uid)})
+				})
+			end)
+			if ok and res and res.Body and res.Body ~= '' and not (res.StatusCode and res.StatusCode >= 500) then
+				local dok, data = pcall(function() return httpService:JSONDecode(res.Body) end)
+				if dok and data then result = tonumber(data.tier) or 0 end
+			end
+			done = true
 		end)
-		if not ok or not res then return 0 end
-		if not res.Body or res.Body == '' then return 0 end
-		if res.StatusCode and res.StatusCode >= 500 then return 0 end
-		local dok, data = pcall(function() return httpService:JSONDecode(res.Body) end)
-		if not dok or not data then return 0 end
-		return tonumber(data.tier) or 0
+		local t = tick()
+		repeat task.wait(0.1) until done or (tick() - t > 5)
+		return result
 	end
 
 	local _tierCache = {}
@@ -313,6 +319,7 @@ do
 		local t = _tierCache[player.UserId]
 		return type(t) == 'number' and t or 0
 	end
+	getgenv().getAccountTier = getAccountTier
 
 	local function startLag(userId)
 		local key = tostring(userId)
