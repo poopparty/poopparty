@@ -3081,7 +3081,7 @@ run(function()
                     if PlaceBlocksToggle.Enabled and toolType == 'block' then
                         local blockPlacer = bedwars.BlockPlacementController and bedwars.BlockPlacementController.blockPlacer
                         if blockPlacer then
-							if inputService.TouchEnabled then
+							if input.TouchEnabled then
 								task.spawn(function()
 									blockPlacer:autoBridge(workspace_GetServerTimeNow - bedwars.KnockbackController:getLastKnockbackTime() >= 0.2)
 								end)
