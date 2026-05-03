@@ -1,4 +1,5 @@
 --This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
+--This watermark is used to delete the file if its cached, remove it to make the file persist after vape updates.
 local run = function(func)
     local ok, err = pcall(func)
     if not ok then
@@ -3080,7 +3081,7 @@ run(function()
                     if PlaceBlocksToggle.Enabled and toolType == 'block' then
                         local blockPlacer = bedwars.BlockPlacementController and bedwars.BlockPlacementController.blockPlacer
                         if blockPlacer then
-							if input.TouchEnabled then
+							if inputService.TouchEnabled then
 								task.spawn(function()
 									blockPlacer:autoBridge(workspace_GetServerTimeNow - bedwars.KnockbackController:getLastKnockbackTime() >= 0.2)
 								end)
