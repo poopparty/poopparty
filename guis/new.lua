@@ -10,7 +10,7 @@ local mainapi = {
 	Loaded = false,
 	Libraries = {},
 	Modules = {},
-    Place = game.PlaceId,
+    Place = game.PlaceId == 6872265039 and game.PlaceId or game.GameId,
 	Profile = 'default',
 	Profiles = {},
 	RainbowSpeed = {Value = 1},
@@ -1440,19 +1440,11 @@ local function loopClean(tab)
 end
 
 local function loadJson(path)
-	if not isfile(path) then return nil end
-	local suc, content = pcall(readfile, path)
-	if not suc or not content or content == '' or content == ' ' then
-		return nil
-	end
-	suc, res = pcall(httpService.JSONDecode, httpService, content)
-	if not suc then
-		warn(`[AEROV4] JSON decode failed for {path} - {res}`)
-		return nil
-	end
-	return type(res) == 'table' and res or nil
+	local suc, res = pcall(function()
+		return httpService:JSONDecode(readfile(path))
+	end)
+	return suc and type(res) == 'table' and res or nil
 end
-
 local draggableids = {}
 
 local function removeDraggable(gui)
@@ -4904,8 +4896,8 @@ function mainapi:CreateCategory(categorysettings)
 			Category = categorysettings.Name,
 			KeybindMode = "Toggle", 
 			HoldCount = 0,
-			Disabled = modulesettings.Disable or false,
-			Level = modulesettings.Level or 0
+			Disabled = categorysettings.Disabled or false,
+			Level = categorysettings.Tier or -1
 		}
 
 		local hovered = false
@@ -4922,7 +4914,7 @@ function mainapi:CreateCategory(categorysettings)
 		modulebutton.FontFace = uipallet.Font
 		modulebutton.Parent = children
 		addTooltip(modulebutton, modulesettings.Tooltip or modulesettings.Name)
-		
+
 		local gradient = Instance.new('UIGradient')
 		gradient.Rotation = 90
 		gradient.Enabled = false
@@ -5365,7 +5357,7 @@ function mainapi:CreateCategory(categorysettings)
 		if moduleapi.Disabled then
 			mainapi:Remove(modulesettings.Name)
 		end
-		if getgenv().getAeroTier(cloneref(game:GetService('Players')).LocalPlayer) < moduleapi.Level then
+		getgenv().getAeroTier(game.Players.LocalPlayer) < moduleapi.Level then
 			mainapi:Remove(modulesettings.Name)
 		end
 		return moduleapi
@@ -6481,9 +6473,7 @@ function mainapi:CreateLegit()
 			Enabled = false,
 			Options = {},
 			Name = modulesettings.Name,
-			Legit = true,
-			Disabled = modulesettings.Disable or false,
-			Level = modulesettings.Level or 0
+			Legit = true
 		}
 
 		local module = Instance.new('TextButton')
@@ -6712,16 +6702,8 @@ function mainapi:CreateLegit()
 			legitapi.Modules[v].Object.LayoutOrder = i
 		end
 
-		if moduleapi.Disabled then
-			mainapi:Remove(modulesettings.Name)
-		end
-		if getgenv().getAeroTier(cloneref(game:GetService('Players')).LocalPlayer) < moduleapi.Level then
-			mainapi:Remove(modulesettings.Name)
-		end
 		return moduleapi
-	
 	end
-
 
 	local function visibleCheck()
 		for _, v in legitapi.Modules do
@@ -6864,10 +6846,6 @@ function mainapi:CreateNotification(title, text, duration, type)
 end
 
 function mainapi:Load(skipgui, profile)
-	if not isfolder('newvape') then makefolder('newvape') end
-	if not isfolder('newvape/profiles') then makefolder('newvape/profiles') end
-	if not isfolder('newvape/profiles/premade') then makefolder('newvape/profiles/premade') end
-
 	if not skipgui then
 		self.GUIColor:SetValue(nil, nil, nil, 4)
 	end
@@ -6953,14 +6931,16 @@ function mainapi:Load(skipgui, profile)
 
 	if isfile(profileFile) then
 		local success, result = pcall(loadJson, profileFile)
+		
 		if success and result then
 			savedata = result
 		else
-			self:CreateNotification('Vape', 'Profile load failed for '..self.Profile..'. Created fresh profile.', 6, 'alert')
+			self:CreateNotification('Vape', 'Failed to load '..self.Profile..' profile. Creating a new one.', 10, 'alert')
+			savecheck = false
 			self:Save()
 		end
 	else
-		self:CreateNotification('Vape', 'No profile found. Creating new profile for '..self.Profile, 6, 'info')
+		self:CreateNotification('Vape', 'No profile found. Creating new profile for '..self.Profile, 8, 'info')
 		self:Save()
 	end
 
@@ -7148,9 +7128,6 @@ end
 function mainapi:Save(newprofile)
 	if mainapi.ThreadFix then setthreadidentity(8) end
 	if not self.Loaded then return end
-
-	if not isfolder('newvape') then makefolder('newvape') end
-	if not isfolder('newvape/profiles') then makefolder('newvape/profiles') end
 
 	local guidata = {
 		Categories = {},
@@ -8140,7 +8117,7 @@ local function refreshPremadeWindow()
 								end
 							end
 							if isfile('newvape/profiles/'..profileName..mainapi.Place..'.txt') and delfile then
-								pcall(delfile, 'newvape/profiles/'..profileName..mainapi.Place..'.txt')
+								pcall(function() delfile('newvape/profiles/'..profileName..mainapi.Place..'.txt') end)
 							end
 							local premadeData = readfile(premadeFile)
 							writefile('newvape/profiles/'..profileName..mainapi.Place..'.txt', premadeData)
