@@ -4895,9 +4895,7 @@ function mainapi:CreateCategory(categorysettings)
 			Name = modulesettings.Name,
 			Category = categorysettings.Name,
 			KeybindMode = "Toggle", 
-			HoldCount = 0,
-			Disabled = categorysettings.Disabled or false,
-			Level = categorysettings.Tier or -1
+			HoldCount = 0       
 		}
 
 		local hovered = false
@@ -5354,12 +5352,7 @@ function mainapi:CreateCategory(categorysettings)
 			end
 		end
 		updateTooltipText()
-		if moduleapi.Disabled then
-			mainapi:Remove(modulesettings.Name)
-		end
-		getgenv().getAeroTier(game.Players.LocalPlayer) < moduleapi.Level then
-			mainapi:Remove(modulesettings.Name)
-		end
+
 		return moduleapi
 	end
 
