@@ -13665,65 +13665,51 @@ end)
 	
 run(function()
 	local AutoTool
-	local old
-
-	local function hotbarSwitchItem(block)
+	local old, event
+	
+	local function switchHotbarItem(block)
 		if block and not block:GetAttribute('NoBreak') and not block:GetAttribute('Team'..(lplr:GetAttribute('Team') or 0)..'NoBreak') then
-			local itemMeta = bedwars.ItemMeta[block.Name]
-			if not itemMeta or not itemMeta.block then return end
-			local tool = store.tools[itemMeta.block.breakType]
-			local slot = nil
+			local tool, slot = store.tools[bedwars.ItemMeta[block.Name].block.breakType], nil
 			if tool then
 				for i, v in store.inventory.hotbar do
-					if v.item and v.item.itemType == tool.itemType then slot = i - 1 break end
+					if v.item and v.item.itemType == tool.itemType then slot = i - 1; break end
 				end
-				if slot and store.inventory.hotbarSlot ~= slot then
-					bedwars.Store:dispatch({
-						type = 'InventorySelectHotbarSlot',
-						slot = slot
-					})
+	
+				if hotbarSwitch(slot) then
+					if inputService:IsMouseButtonPressed(0) then 
+						event:Fire() 
+					end
+					return true
 				end
 			end
 		end
+        return nil
 	end
-
+	
 	AutoTool = vape.Categories.World:CreateModule({
 		Name = 'AutoTool',
 		Function = function(callback)
 			if callback then
-				if not bedwars.BlockBreaker or not bedwars.BlockBreaker.hitBlock then
-					warn('autoTool: bedwars.BlockBreaker not ready skipping ts hook')
-					return
-				end
-
-				if not old then
-					old = bedwars.BlockBreaker.hitBlock
-				end
-
-				local fastBreakHook = function(self, maid, raycastparams, ...)
-					local block
-					pcall(function()
-						local info = self.clientManager:getBlockSelector():getMouseInfo(1, {ray = raycastparams})
-						block = info and info.target and info.target.blockInstance or nil
-					end)
-					pcall(function()
-						hotbarSwitchItem(block)
-					end)
-					if old then
-						local ok, res = pcall(old, self, maid, raycastparams, ...)
-						if ok then return res end
-					end
+				event = Instance.new('BindableEvent')
+				AutoTool:Clean(event)
+				AutoTool:Clean(event.Event:Connect(function()
+					contextActionService:CallFunction('block-break', Enum.UserInputState.Begin, newproxy(true))
+				end))
+				old = bedwars.BlockBreaker.hitBlock
+				bedwars.BlockBreaker.hitBlock = function(self, maid, raycastparams, ...)
+					local block = self.clientManager:getBlockSelector():getMouseInfo(1, {ray = raycastparams})
+					if switchHotbarItem(block and block.target and block.target.blockInstance or nil) then return end
+					return old(self, maid, raycastparams, ...)
 				end
 			else
-				if old and bedwars.BlockBreaker then
-					bedwars.BlockBreaker.hitBlock = old
-				end
+				bedwars.BlockBreaker.hitBlock = old
 				old = nil
 			end
 		end,
 		Tooltip = 'Automatically selects the correct tool'
 	})
 end)
+
 	
 run(function()
 	local AutoTool
